@@ -185,6 +185,7 @@ void setup() {
   Serial.println(SN);
 
   Serial.println(F("To program new serial number 'XXX', enter 'SN:XXX'"));
+  Serial.println(F("For Lab Mode (streaming data over Serial; no GPS), enter 'lab'"));
   delay(50);
   // Configure the GPS
   GPS_startup(config); 
@@ -215,7 +216,11 @@ void loop() {
 
     // Meanwhile, check to see if user has supplied new serial number via Serial connection.
     if(Serial.available() > 2){
-      if(Serial.read() == 'S' && Serial.read() == 'N' && Serial.read() == ':'){ // If "SN:" prefix is detected, write the new serial number to EEPROM.
+      for(int i = 0; i < 3; i++){
+        buffer[i] = Serial.read();
+      }
+//      if(Serial.read() == 'S' && Serial.read() == 'N' && Serial.read() == ':'){ // If "SN:" prefix is detected, write the new serial number to EEPROM.
+      if(buffer[0] == 'S' && buffer[1] == 'N' && buffer[2] == ':'){ // If "SN:" prefix is detected, write the new serial number to EEPROM.
         SN = 0;
         for(int i = 0; i < 3; i++){
           while(!Serial.available()){}
@@ -224,7 +229,14 @@ void loop() {
         }
         Serial.print(F("New Serial Number: "));
         Serial.println(SN);
+      }else{ // check to see if user has requested a lab test (output to serial in addition to sd)
+        if(buffer[0] == 'l' && buffer[1] == 'a' && buffer[2] == 'b'){
+          config.serial_output = 1; // send pressure data over Serial
+          config.gps_mode = 3; // GPS off
+          Serial.println(F("Lab test mode: no GPS, data over Serial"));
+        }
       }
+      
     }
   }
 
@@ -251,16 +263,22 @@ void loop() {
     file.close();
   }else{ // if no config file, use defaults
     Serial.println(F("Config file does not exist; using defaults"));
-    config.gps_mode = 1;
+    if(config.gps_mode != 3){ // if set (in startup), preserve it
+      config.gps_mode = 1;
+    }
     config.gps_cycle = GPS_CYC_DEFAULT; // minutes
     config.gps_quota = GPS_QUOTA_DEFAULT; 
     config.led_shutoff = 0; // never disable LEDs
+    if(config.serial_output != 1){ //if set (in startup), preserve it
+      config.serial_output = 0; // do not send pressure data over serial
+    }
   }
   Serial.println(F("Configuration:"));
   Serial.print(F("GPS Mode (1-Cycled, 2-On, 3-Off): ")); Serial.println(config.gps_mode);
   Serial.print(F("GPS Cycle Duration (min.): ")); Serial.println(config.gps_cycle);
   Serial.print(F("GPS Quota (Fixes): ")); Serial.println(config.gps_quota);
   Serial.print(F("LED Shutoff (minutes): ")); Serial.println(config.led_shutoff);
+  Serial.print(F("Serial Output (0-off, 1-on): ")); Serial.println(config.serial_output);
   
   // Open the first output data file
   FindFirstFile(filename, &sd, &file, &SN); // find the first filename of the form "FILEXXXX.TXT" that doesn't already exist
@@ -278,7 +296,7 @@ void loop() {
         file.print(F("P,")); file.println(pps_millis);
         pps_print = 0;
         if(config.led_shutoff == 0 || (firstfile == 1 && (sample_count/6000) < config.led_shutoff)){
-          digitalWrite(ERRORLED, HIGH);
+          digitalWrite(ERRORLED, HIGH); // blink red when the PPS arrives
         }
         pps_count++;
       }else{
@@ -322,7 +340,7 @@ uint8_t fail = ParseRMC(buffer, &G);
     writeStartTime = millis();// remember start time for writing this sample
     Record_t* p = fifo.waitData(TIME_IMMEDIATE);// Check for an available data record in the FIFO.
     if(!p) continue;// Continue if no available data records in the FIFO.
-    printdata(p, &file, &pps_millis);  // Print data to file
+    printdata(p, &file, &pps_millis, &config);  // Print data to file
     fifo.signalFree(); // Signal the read thread that the record is free.
 
     // done writing to disk.  now, just a bunch of timekeeping stuff.

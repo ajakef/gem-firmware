@@ -60,6 +60,7 @@ struct GemConfig {
   uint16_t gps_cycle; // interval (minutes)
   uint8_t gps_quota; // number of strings
   uint8_t led_shutoff; // 0 (never turn off), 1-255 (number of minutes to leave on)
+  uint8_t serial_output; // 0 to send all data to SD only; 1 to send all data to SD and pressure data only to Serial too
 };
 
 // Type for a data record.
@@ -82,7 +83,7 @@ struct RMC {
 };
 
 // Functions declarations:
-void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis);
+void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConfig *config);
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_flag, float* AVCC);
 void printRMC(RMC* G, SdFile* file, volatile uint16_t* pps_millis);;
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN);

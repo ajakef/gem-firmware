@@ -1,10 +1,14 @@
 #include "logger.h"
 #include <EEPROM.h>
-void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis){
+
+void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConfig *config){
   // write a data line
   file->print(F("D,"));
   file->printField(p->time, ',');
   file->printField(p->pressure, ',');
+  if(config->serial_output){
+    Serial.println(p->pressure);
+  }
   file->println((uint16_t)millis() - p->time);
 }
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_on, float* AVCC){
@@ -172,7 +176,7 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
   nilPrintUnusedStack(&Serial);
   fifo->printStats(&Serial);
   digitalWrite(LED, HIGH);
-  //digitalWrite(ERRORLED, HIGH);
+  digitalWrite(ERRORLED, HIGH);
   delay(100);
   digitalWrite(LED, LOW);
   digitalWrite(ERRORLED, LOW);
@@ -354,10 +358,12 @@ void ReadConfig(SdFile *file, char *buffer, uint8_t *buffidx, GemConfig *config)
   x = ReadConfigLine(file, buffer, buffidx);
   Serial.println(buffer);
   Serial.println(x);
-  if(x > 3 || x < 1){
-    config->gps_mode = 1;
-  }else{
-    config->gps_mode = x;
+  if(config->gps_mode != 3){ // if gps_mode is already 3, then it has been set to labtest mode--override the config file
+    if(x > 3 || x < 1){
+      config->gps_mode = 1;
+    }else{
+      config->gps_mode = x;
+    }
   }
   // parse second line: gps_cycle
   x = ReadConfigLine(file, buffer, buffidx);
@@ -379,6 +385,13 @@ void ReadConfig(SdFile *file, char *buffer, uint8_t *buffidx, GemConfig *config)
     config->led_shutoff = 0; // default: never turn off
   }else{
     config->led_shutoff = x;
+  }
+  // parse fifth line: serial_output
+  x = ReadConfigLine(file, buffer, buffidx);
+  if(x == 1 || config->serial_output == 1){ // if serial_output is already set (by user on startup), it's in labtest mode. preserve this.
+    config->serial_output = 1; // send pressure data over serial connection as well as to SD. This could maybe interfere with GPS.
+  }else{
+    config->serial_output = 0; // default: do not send pressure data over serial
   }
 }
 int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
