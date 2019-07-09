@@ -1,4 +1,4 @@
-/* Pinout:
+ /* Pinout:
 0,1: Serial
 2: PPS interrupt
 3: Open
@@ -12,9 +12,9 @@ A1: Battery Voltage
 */
 #include <Wire.h>
 #include <SdFat.h> // 512-byte buffer
-#include <NilRTOS.h>
-#include <NilFIFO.h>
-#include <NilTimer1.h>
+//#include <NilRTOS.h> // might not be needed?
+//#include <NilFIFO.h> // might not be needed?
+#include <NilTimer1.h> 
 #include "Adafruit_ADS1015.h"
 #include <EEPROM.h>
 #include "logger.h"
@@ -62,6 +62,7 @@ int16_t ADC_F;
 uint32_t mmm=0;
 uint16_t tsamp[4] = {0, 0, 0, 0};
 int16_t reading;
+int16_t last_sample = 0;
 ////////////////////////////////////////////////////
 
 // Highest priority thread: read ADC and send to FIFO
@@ -188,12 +189,10 @@ void setup() {
   Serial.println(F("For Lab Mode (streaming data over Serial; no GPS), enter 'lab'"));
   delay(50);
   // Configure the GPS
-  GPS_startup(config); 
+  GPS_startup(&config); 
   
   // start external ADC (ADS1115)
   adc.begin();
-  adc.setGain(GAIN_SIXTEEN);
-  
   // Start Real-Time Operating System
   nilSysBegin(); // this line must be in setup
 }
@@ -207,6 +206,9 @@ void loop() {
   logging[0] = 0; logging[1] = 0;
   sample_count = 0;
   GPS_count = 0;
+  pps_count = 0;
+  pps_print = 0;
+  pps = 0;
   cons_overruns= 0;
   AdcError = 0;
   maxWriteTime = 0;
@@ -261,17 +263,31 @@ void loop() {
     Serial.println(F("Reading config file"));
     ReadConfig(&file, buffer, &buffidx, &config);
     file.close();
+    // acknowledge config file read with red-blue blink
+    digitalWrite(LED, HIGH);
+    digitalWrite(ERRORLED, HIGH);
+    delay(100);
+    digitalWrite(LED, LOW);
+    digitalWrite(ERRORLED, LOW);
+
   }else{ // if no config file, use defaults
     Serial.println(F("Config file does not exist; using defaults"));
     if(config.gps_mode != 3){ // if set (in startup), preserve it
       config.gps_mode = 1;
-    }
+      GPS_count = 0;
+      pps_count = 0;
+      pps_print = 0;
+      pps = 0;
+   }
     config.gps_cycle = GPS_CYC_DEFAULT; // minutes
     config.gps_quota = GPS_QUOTA_DEFAULT; 
+    config.adc_range = 0;
     config.led_shutoff = 0; // never disable LEDs
     if(config.serial_output != 1){ //if set (in startup), preserve it
       config.serial_output = 0; // do not send pressure data over serial
     }
+    //config.compression = 1; // default: use compression
+    //config.file_length = FILE_LENGTH_DEFAULT/10;
   }
   Serial.println(F("Configuration:"));
   Serial.print(F("GPS Mode (1-Cycled, 2-On, 3-Off): ")); Serial.println(config.gps_mode);
@@ -279,12 +295,27 @@ void loop() {
   Serial.print(F("GPS Quota (Fixes): ")); Serial.println(config.gps_quota);
   Serial.print(F("LED Shutoff (minutes): ")); Serial.println(config.led_shutoff);
   Serial.print(F("Serial Output (0-off, 1-on): ")); Serial.println(config.serial_output);
-  
+  Serial.print(F("ADC Range: ")); Serial.println(config.adc_range);
+  //Serial.print(F("Data Compression (0-off, 1-on): ")); Serial.println(config.compression);
+  //Serial.print(F("File Length (minutes--must be multiple of 10): ")); Serial.println(config.file_length*10);
+
+  // set the PGA gain. The INA118 clips at +0.55V, so no sense turning gain up above 8
+  if(config.adc_range == 1){ 
+    adc.setGain(GAIN_EIGHT);  
+  }else{
+    adc.setGain(GAIN_SIXTEEN); // default, appropriate for most infrasound
+  }  
+
   // Open the first output data file
   FindFirstFile(filename, &sd, &file, &SN); // find the first filename of the form "FILEXXXX.TXT" that doesn't already exist
-  OpenNewFile(&sd, filename, &file); // for some reason, this takes a long time (~4s), but for the first file only.
+  OpenNewFile(&sd, filename, &file, &config, &last_sample); // for some reason, this takes a long time (~4s), but for the first file only.
   sampling = 1; // tell the high-priority thread to start sampling the ADC
   firstfile = 1; // this is the first file since acquisition starts
+
+  // Turn the GPS off if needed
+  if(config.gps_mode == 3){
+    Serial.println(F(PMTK_STANDBY));
+  }
 
   while(logging[0]){ // stay in this sub-loop until the logging switch is turned off
     //////////////////////////////////
@@ -293,7 +324,7 @@ void loop() {
     // it search for a fix immediately, saving time.
     while(GPS_on && (Serial.available() > 0)){ 
       if(pps_print){
-        file.print(F("P,")); file.println(pps_millis);
+        file.print(F("P,")); file.println(pps_millis % MILLIS_ROLLOVER);
         pps_print = 0;
         if(config.led_shutoff == 0 || (firstfile == 1 && (sample_count/6000) < config.led_shutoff)){
           digitalWrite(ERRORLED, HIGH); // blink red when the PPS arrives
@@ -310,7 +341,7 @@ void loop() {
         continue;
       }
       if(c == '\n'){ // newline is the end of the string--parse it, write it to disk, and reset everything
-uint8_t fail = ParseRMC(buffer, &G);
+        uint8_t fail = ParseRMC(buffer, &G);
         if(fail == 0){  // if it's a good RMC string, this statement will run
           printRMC(&G, &file, &pps_millis); 
           GPS_count++; // only increment GPS_count if it's a good string
@@ -340,7 +371,7 @@ uint8_t fail = ParseRMC(buffer, &G);
     writeStartTime = millis();// remember start time for writing this sample
     Record_t* p = fifo.waitData(TIME_IMMEDIATE);// Check for an available data record in the FIFO.
     if(!p) continue;// Continue if no available data records in the FIFO.
-    printdata(p, &file, &pps_millis, &config);  // Print data to file
+    printdata(p, &file, &pps_millis, &config, &last_sample);  // Print data to file
     fifo.signalFree(); // Signal the read thread that the record is free.
 
     // done writing to disk.  now, just a bunch of timekeeping stuff.
@@ -348,12 +379,14 @@ uint8_t fail = ParseRMC(buffer, &G);
     // Check to see if pps_count is too high (GPS strings not being logged). If yes, restart GPS.
     if( (pps_count - GPS_count) > 30 ){
       Serial.println(F(PMTK_STANDBY));
-      delay(3);
-      Serial.println(F(PMTK_AWAKE));
-      delay(3);
-      Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCONLY));
-      delay(3);
-      Serial.println(F(PMTK_SET_NMEA_UPDATE_1HZ));
+      if(config.gps_mode !=3){
+        delay(3);
+        Serial.println(F(PMTK_AWAKE));
+        delay(3);
+        Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCONLY));
+        delay(3);
+        Serial.println(F(PMTK_SET_NMEA_UPDATE_1HZ));
+      }
       pps_count = 0;
     }
   
@@ -382,11 +415,11 @@ uint8_t fail = ParseRMC(buffer, &G);
       }
     }
     
-    // switch files every FILE_LENGTH
-    if(sample_count % FILE_LENGTH == 0 && sample_count > 0){ // switch files if FILE_LENGTH reached
+    // switch files once we've recorded the sample limit
+    if(sample_count % (FILE_LENGTH_DEFAULT * 60L * 100L) == 0 && sample_count > 0){ // switch files if config.file_length reached--factor of 10 needed
       EndFile(&file); // close the old file
       IncrementFilename(filename); // move to the next filename (e.g., FILE0001.TXT to FILE0002.TXT. Note that this does not make sure that the new file name is not already taken!)
-      OpenNewFile(&sd, filename, &file); // open the new file
+      OpenNewFile(&sd, filename, &file, &config, &last_sample); // open the new file
       sample_count = 0;
       firstfile = 0; // this is no longer the first file since acquisition started
     }

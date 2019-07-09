@@ -1,25 +1,33 @@
 #include "logger.h"
 #include <EEPROM.h>
 
-void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConfig *config){
-  // write a data line
-  file->print(F("D,"));
-  file->printField(p->time, ',');
-  file->printField(p->pressure, ',');
+void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConfig *config, int16_t* last_sample){
+  // print data to the serial connection if needed
   if(config->serial_output){
     Serial.println(p->pressure);
   }
-  file->println((uint16_t)millis() - p->time);
+  // write a data line
+  //if(config->compression == 1){
+    file->print(F("D"));
+    file->printField(p->time % MILLIS_ROLLOVER, ',');
+    file->println(p->pressure - *last_sample);
+    *last_sample = p->pressure;
+  /*}else{
+    file->print(F("D,"));
+    file->printField(p->time, ',');
+    file->printField(p->pressure, ',');
+    file->println((uint16_t)millis() - p->time);
+  }*/ // disable uncompressed output
 }
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_on, float* AVCC){
   uint16_t reading;
   // to reduce adc error, preliminary throwaway reading is taken before final reading for each pin. This gives the pin time to settle after being connected to ADC.
   analogRead(BATVOLT); 
   file->print(F("M,"));
-  file->printField((uint16_t)millis(), ',');
+  file->printField((uint16_t)millis() % MILLIS_ROLLOVER, ',');
   reading = analogRead(BATVOLT);
   analogRead(TEMP);
-  file->printField(((float)reading)/1023.0 * *AVCC * 12.2/2.2, ',', 2); // in V
+  file->printField(((float)reading)/1023.0 * *AVCC * 5.54545, ',', 2); // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
   reading = analogRead(TEMP);
   analogRead(2);
   file->printField(((float)reading)* *AVCC/1023.0 * 100.0 - 50.0, ',', 1); // Celsius
@@ -51,13 +59,13 @@ void printRMC(RMC* G, SdFile* file, volatile uint16_t *pps_millis){
   if(G->lat == 0.0){
     file->print(F("E,3,"));file->println(G->lat);
     return; // lat = 0 is a missing value
-  }
+  } // lat = 0 is a missing value code and it's also the equator. Bad design, but even if we're on the equator within about a meter, only a fraction of strings will be rejected.
   if(G->second != (float)((int)G->second)){
     file->print(F("E,4,")); file->println(G->second);
     return; // non-integer seconds is potentially unreliable
   }
   file->print("G,");
-  file->printField(*pps_millis, ',');file->printField(G->millisParsed-*pps_millis, ',');
+  file->printField(*pps_millis % MILLIS_ROLLOVER, ',');file->printField(G->millisParsed-*pps_millis, ',');
   file->printField(G->year, ',');
   file->printField(G->month, ',');
   file->printField(G->day, ',');
@@ -117,10 +125,10 @@ void IncrementFilename(char fname[13]){ // change to pointer? does it matter?
 void logstatus(int8_t logging[2]){
   // logging[0] is current status. logging[1] is number of consecutive changed readings.
   // change logging status when 10 changed readings are recorded. This is to ignore switch bouncing.
-  int8_t switchstatus = digitalRead(SWITCH); // read current switch status
+  //int8_t switchstatus = digitalRead(SWITCH); // read current switch status
 
   // if switchstatus is currently on, increment switch on count, and change logging status if it's >10
-  if(switchstatus == 1){ 
+  if(digitalRead(SWITCH) == 1){  // switchstatus
     if(++logging[1] > 10){
       logging[1] = 10;
       logging[0] = 1;
@@ -134,21 +142,38 @@ void logstatus(int8_t logging[2]){
   }
 }
 
-void OpenNewFile(SdFat* sd, char filename[13], SdFile* file){
+void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, int16_t* last_sample){
   //Serial.println(10);
   if(!file->open(filename, O_WRITE | O_TRUNC | O_CREAT)) { 
     error(2); 
   }
   //Serial.println(20);
-  file->println(F("#GemCSV0.85"));
+  /*
+  if(config->compression == 0){ // compression off
+    file->println(F("#GemCSV0.85")); 
+    file->println(F("#D,msSamp,ADC,msLag"));
+  }else if(config->compression == 1){ // compression on*/
+    *last_sample = 0; // so it writes the actual value, not the diff, as the first sample in each file
+    file->println(F("#GemCSV0.85C"));
+    file->println(F("#DmsSamp,ADC"));
+  //}
   file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon"));
-  file->println(F("#D,msSamp,ADC,msLag"));
   file->println(F("#M,ms,batt(V),temp(C),A2,A3,maxLag,minFree,maxUsed,maxOver,gpsFlag,freeStack1,freeStackIdle"));
-  file->print(F("S,")); // changed format from S,G000 (e.g.) to S,000
-  //Serial.println(30);
+
+  file->print(F("S,"));
   file->print(EEPROM.read(0)-'0');
   file->print(EEPROM.read(1)-'0');
   file->println(EEPROM.read(2)-'0');
+
+  // print configuration
+  file->print(F("C,"));
+  file->printField(config->gps_mode, ',');
+  file->printField(config->gps_cycle, ',');
+  file->printField(config->gps_quota, ',');
+  file->printField(config->adc_range, ',');
+  file->printField(config->led_shutoff, ',');
+  file->println(config->serial_output);
+
 }
 
 void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint8_t* GPS_count){
@@ -183,7 +208,7 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
   Serial.println(F(PMTK_STANDBY));
 }
 
-void GPS_startup(GemConfig config){
+void GPS_startup(GemConfig* config){
 //  pinMode(7, INPUT); // unnecessary
 //  pinMode(8, INPUT); // unnecessary
   Serial.begin(9600);
@@ -192,7 +217,7 @@ void GPS_startup(GemConfig config){
   Serial.begin(57600);
   delay(50);
   delay(50);
-  if(config.gps_mode != 3){ // if GPS is set to "on" or "cycled", turn it on now
+  if(config->gps_mode != 3){ // if GPS is set to "on" or "cycled", turn it on now
     Serial.println(F(PMTK_AWAKE)); // command to wake up GPS
     delay(50);
     Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCONLY));
@@ -216,6 +241,8 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
   All text above must be included in any redistribution
   */
   uint8_t failure_code = 0;
+  float degreef;
+  float minutesf;
     
   // check to see whether nmea has a checksum and whether it is correct
   if (nmea[strlen(nmea)-4] == '*') {
@@ -262,6 +289,7 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     strncpy(degreebuff, p, 2);
     p += 2;
     degreebuff[2] = '\0';
+    /*
     long degree = atol(degreebuff) * 10000000;
     strncpy(degreebuff, p, 2); // minutes
     p += 3; // skip decimal point
@@ -269,6 +297,14 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     degreebuff[6] = '\0';
     long minutes = 50 * atol(degreebuff) / 3;
     G->lat = ((float)(degree+minutes))/10000000.0;
+    */
+    degreef = atof(degreebuff); // 2015/6/8: try this with floats and see if it works.  if yes, change lat too; otherwise revert.
+    strncpy(degreebuff, p, 2); // minutes
+    p += 3; // skip decimal point
+    strncpy(degreebuff + 2, p, 4);
+    degreebuff[6] = '\0';
+    minutesf = atof(degreebuff)/10000;
+    G->lat = degreef + minutesf/60;
     p = strchr(p, ',')+1;
     if(p[0] == 'S') G->lat = -G->lat;
     
@@ -379,20 +415,42 @@ void ReadConfig(SdFile *file, char *buffer, uint8_t *buffidx, GemConfig *config)
   }else{
     config->gps_quota = x;
   }
-  // parse fourth line: led_shutoff
+  // parse fourth line: gain
+  x = ReadConfigLine(file, buffer, buffidx);
+  if(x == 1){ 
+    config->adc_range = 1; // ADC input range +/-0.512V
+  }else{
+    config->adc_range = 0; // default: ADC input range +/-0.256V
+  }
+  // parse fifth line: led_shutoff
   x = ReadConfigLine(file, buffer, buffidx);
   if(x > 255 || x < 0){
     config->led_shutoff = 0; // default: never turn off
   }else{
     config->led_shutoff = x;
   }
-  // parse fifth line: serial_output
+  // parse sixth line: serial_output
   x = ReadConfigLine(file, buffer, buffidx);
   if(x == 1 || config->serial_output == 1){ // if serial_output is already set (by user on startup), it's in labtest mode. preserve this.
     config->serial_output = 1; // send pressure data over serial connection as well as to SD. This could maybe interfere with GPS.
   }else{
     config->serial_output = 0; // default: do not send pressure data over serial
-  }
+  } 
+  // User doesn't really need control over these things; disable as config options
+  // parse sixth line: data compression
+  //x = ReadConfigLine(file, buffer, buffidx);
+  //if(x == 0){ 
+  //  config->compression = 0; // no compression
+  //}else{
+    config->compression = 1; // default: compression mode 1 (omit certain commas, log pressure differences, skip data millisLag, 13-bit millis
+  //}
+  // parse eighth line: file length
+  //x = ReadConfigLine(file, buffer, buffidx) / 10;
+  //if(x > 0 && x < pow(2,8)){ 
+  //  config->file_length = x; // file length in tens of minutes
+  //}else{
+    config->file_length = FILE_LENGTH_DEFAULT/10;
+  //}*/
 }
 int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
   /* procedure: log characters (except whitespace and anything after a #) until \n is found. Then, run the result through strtol.
