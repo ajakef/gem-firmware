@@ -3,8 +3,11 @@
 
 void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConfig *config, int16_t* last_sample){
   // print data to the serial connection if needed
-  if(config->serial_output){
-    Serial.println(p->pressure);
+  if(config->serial_output == 1){
+    Serial.println(p->pressure); // ascii data stream
+  }else if(config->serial_output == 2){
+    Serial.write((int8_t)(p->pressure / 256)); // binary data stream
+    Serial.write((uint8_t)(p->pressure % 256)); // binary data stream
   }
   // write a data line
   //if(config->compression == 1){

@@ -1,4 +1,4 @@
- /* Pinout:
+/* Pinout:
 0,1: Serial
 2: PPS interrupt
 3: Open
@@ -186,7 +186,8 @@ void setup() {
   Serial.println(SN);
 
   Serial.println(F("To program new serial number 'XXX', enter 'SN:XXX'"));
-  Serial.println(F("For Lab Mode (streaming data over Serial; no GPS), enter 'lab'"));
+  Serial.println(F("For Lab Mode (streaming ascii data over Serial; no GPS), enter 'lab'"));
+  Serial.println(F("For Binary Mode (streaming binary data over Serial; no GPS), enter 'lab'"));
   delay(50);
   // Configure the GPS
   GPS_startup(&config); 
@@ -227,18 +228,21 @@ void loop() {
         for(int i = 0; i < 3; i++){
           while(!Serial.available()){}
           EEPROM.write(i, (char) Serial.read());
-          SN += pow(10, 2-i) * (EEPROM.read(i)-'0');
+          SN += round(pow(10, 2-i)) * (EEPROM.read(i)-'0');
         }
         Serial.print(F("New Serial Number: "));
         Serial.println(SN);
-      }else{ // check to see if user has requested a lab test (output to serial in addition to sd)
-        if(buffer[0] == 'l' && buffer[1] == 'a' && buffer[2] == 'b'){
-          config.serial_output = 1; // send pressure data over Serial
-          config.gps_mode = 3; // GPS off
-          Serial.println(F("Lab test mode: no GPS, data over Serial"));
-        }
+      }else if(buffer[0] == 'l' && buffer[1] == 'a' && buffer[2] == 'b'){ 
+        // check to see if user has requested a lab test (output to serial in addition to sd)
+        config.serial_output = 1; // send pressure data over Serial
+        config.gps_mode = 3; // GPS off
+        Serial.println(F("Lab test mode: no GPS, ascii data over Serial"));
+      }else if(buffer[0] == 'b' && buffer[1] == 'i' && buffer[2] == 'n'){
+        config.serial_output = 2; // send pressure data over Serial
+        config.gps_mode = 3; // GPS off
+        Serial.println(F("Lab test mode: no GPS, binary data over Serial"));
+        
       }
-      
     }
   }
 
@@ -283,7 +287,7 @@ void loop() {
     config.gps_quota = GPS_QUOTA_DEFAULT; 
     config.adc_range = 0;
     config.led_shutoff = 0; // never disable LEDs
-    if(config.serial_output != 1){ //if set (in startup), preserve it
+    if(config.serial_output != 1 && config.serial_output != 2){ //if set (in startup), preserve it
       config.serial_output = 0; // do not send pressure data over serial
     }
     //config.compression = 1; // default: use compression
@@ -300,7 +304,9 @@ void loop() {
   //Serial.print(F("File Length (minutes--must be multiple of 10): ")); Serial.println(config.file_length*10);
 
   // set the PGA gain. The INA118 clips at +0.55V, so no sense turning gain up above 8
-  if(config.adc_range == 1){ 
+  if(config.adc_range == 2){ // Don't actually use this setting for Gems with INA118 (v0.98-v1.0)
+    adc.setGain(GAIN_FOUR);  
+  }else if(config.adc_range == 1){ // This is always ok with the amp, but consider the sensor's linearity
     adc.setGain(GAIN_EIGHT);  
   }else{
     adc.setGain(GAIN_SIXTEEN); // default, appropriate for most infrasound
@@ -464,5 +470,3 @@ void error(int8_t code){
 // 2: sd.open
 // 3: ADS1115 communication
 // 4: overruns--can be due to bad SD connection
-
-
