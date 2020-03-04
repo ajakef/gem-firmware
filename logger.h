@@ -132,3 +132,4 @@ int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx);
 //#define PGCMD_NOANTENNA "$PGCMD,33,0*6D"
 //#define PMTK_ENABLE_SBAS "$PMTK313,1*2E"
 //#define PMTK_ENABLE_WAAS "$PMTK301,2*2E"
+
