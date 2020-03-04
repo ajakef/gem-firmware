@@ -1,5 +1,6 @@
 #include "logger.h"
 #include <EEPROM.h>
+#include "version.h"
 
 void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConfig *config, int16_t* last_sample){
   // print data to the serial connection if needed
@@ -158,6 +159,7 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
   }else if(config->compression == 1){ // compression on*/
     *last_sample = 0; // so it writes the actual value, not the diff, as the first sample in each file
     file->println(F("#GemCSV0.85C"));
+    file->print(F("#Firmware"));file->println(F(FIRMWARE_VERSION));
     file->println(F("#DmsSamp,ADC"));
   //}
   file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon"));
