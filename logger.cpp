@@ -36,9 +36,9 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   file->printField(((float)reading)* *AVCC/1023.0 * 100.0 - 50.0, ',', 1); // Celsius
   reading = analogRead(2);
   analogRead(3);
-  file->printField(((float)reading)* *AVCC/1023.0, ',', 1); // V
+  file->printField(((float)reading)* *AVCC/1023.0, ',', 3); // V
   reading = analogRead(3);
-  file->printField(((float)reading)* *AVCC/1023.0, ',', 1); // V
+  file->printField(((float)reading)* *AVCC/1023.0, ',', 3); // V
   
   file->printField(*maxWriteTime, ',');
   file->printField(fifo->minimumFreeCount(), ',');
@@ -65,7 +65,7 @@ void printRMC(RMC* G, SdFile* file, volatile uint16_t *pps_millis){
   } // lat = 0 is a missing value code and it's also the equator. Bad design, but even if we're on the equator within about a meter, only a fraction of strings will be rejected.
   if(G->second != (float)((int)G->second)){
     file->print(F("E,4,")); file->println(G->second);
-    return; // non-integer seconds is potentially unreliable
+    return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
   }
   file->print("G,");
   file->printField(*pps_millis % MILLIS_ROLLOVER, ',');file->printField(G->millisParsed-*pps_millis, ',');
@@ -212,8 +212,6 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
 }
 
 void GPS_startup(GemConfig* config){
-//  pinMode(7, INPUT); // unnecessary
-//  pinMode(8, INPUT); // unnecessary
   Serial.begin(9600);
   Serial.println(F(PMTK_SET_BAUD_57600));
   delay(50);
@@ -224,6 +222,7 @@ void GPS_startup(GemConfig* config){
     Serial.println(F(PMTK_AWAKE)); // command to wake up GPS
     delay(50);
     Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCONLY));
+    //Serial.println(F(PMTK_SET_NMEA_OUTPUT_ALLDATA));
     delay(50);
     Serial.println(F(PMTK_SET_NMEA_UPDATE_1HZ));
   }else{ // if it's set to "off", turn it to standby

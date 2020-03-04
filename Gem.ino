@@ -187,7 +187,7 @@ void setup() {
 
   Serial.println(F("To program new serial number 'XXX', enter 'SN:XXX'"));
   Serial.println(F("For Lab Mode (streaming ascii data over Serial; no GPS), enter 'lab'"));
-  Serial.println(F("For Binary Mode (streaming binary data over Serial; no GPS), enter 'lab'"));
+  Serial.println(F("For Binary Mode (streaming binary data over Serial; no GPS), enter 'bin'"));
   delay(50);
   // Configure the GPS
   GPS_startup(&config); 
