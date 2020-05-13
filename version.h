@@ -1,1 +1,1 @@
-#define FIRMWARE_VERSION "v0.93.0-2-g54ce3be"
+#define FIRMWARE_VERSION 0.935

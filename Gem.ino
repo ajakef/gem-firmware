@@ -78,8 +78,9 @@ NIL_THREAD(Thread1, arg) { // Declare thread function for thread 1.
     nilTimer1Start(DT);
     tsamp[0] = millis()-30; tsamp[1] = tsamp[0]+10; tsamp[2] = tsamp[1]+10; tsamp[3] = tsamp[2]+10;
     FIR_count = 0;
+
     while(sampling){
-  // Sleep until it's time for next data point.
+      // Sleep until it's time for next data point.
       if (!nilTimer1Wait()) {
         digitalWrite(ERRORLED, HIGH);
         fifo.countOverrun();// Took too long so count an overrun.

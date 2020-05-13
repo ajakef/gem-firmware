@@ -158,8 +158,7 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
     file->println(F("#D,msSamp,ADC,msLag"));
   }else if(config->compression == 1){ // compression on*/
     *last_sample = 0; // so it writes the actual value, not the diff, as the first sample in each file
-    file->println(F("#GemCSV0.85C"));
-    file->print(F("#Firmware"));file->println(F(FIRMWARE_VERSION));
+    file->println(F("#GemCSV0.9"));
     file->println(F("#DmsSamp,ADC"));
   //}
   file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon"));
@@ -169,6 +168,8 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
   file->print(EEPROM.read(0)-'0');
   file->print(EEPROM.read(1)-'0');
   file->println(EEPROM.read(2)-'0');
+
+  file->print(F("#Firmware"));file->println(F(FIRMWARE_VERSION));
 
   // print configuration
   file->print(F("C,"));
