@@ -10,6 +10,7 @@
 A0: Temperature
 A1: Battery Voltage
 */
+#include "version.h"
 #include <Wire.h>
 #include <SdFat.h> // 512-byte buffer
 //#include <NilRTOS.h> // might not be needed?
@@ -182,6 +183,7 @@ void setup() {
   
   // In case user has computer connected by Serial, give instructions on how to set serial number
   Serial.begin(57600);
+  serial.print(F("Firmware ")); serial.println(F(FIRMWARE_VERSION));
   Serial.println();
   Serial.print(F("Gem Serial Number: "));
   Serial.println(SN);
@@ -384,7 +386,8 @@ void loop() {
     // done writing to disk.  now, just a bunch of timekeeping stuff.
 
     // Check to see if pps_count is too high (GPS strings not being logged). If yes, restart GPS.
-    if( (pps_count - GPS_count) > 30 ){
+    if( (pps_count - GPS_count) > 5 ){
+      /*
       Serial.println(F(PMTK_STANDBY));
       if(config.gps_mode !=3){
         delay(3);
@@ -394,6 +397,9 @@ void loop() {
         delay(3);
         Serial.println(F(PMTK_SET_NMEA_UPDATE_1HZ));
       }
+      */
+      GPS_startup(&config);
+      file.println(F("E,GPS_startup"));
       pps_count = 0;
     }
   
