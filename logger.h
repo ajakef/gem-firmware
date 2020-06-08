@@ -11,6 +11,7 @@
 #define GPS_QUOTA_DEFAULT 20
 #define GPS_CYC 90000 // interval in samples between GPS turning on and logging until quota is reached) 15 minutes
 #define GPS_CYC_DEFAULT 15 // minutes, for the config
+#define GPS_RESET_THRESHOLD 20 // reset the GPS if it records 20 PPS pulses without a good NMEA string
 #define META_CYC 100 // interval (in samples) between metadata reports (10 s)
 #define FIFO_SIZE_BYTES 300  // size of FIFO: must be long enough to make sure it doesn't fill, but short enough to fit within available SRAM. 
 // If program crashes mysteriously after adding new code, it could be a memory error: try decreasing FIFO_SIZE_BYTES.
