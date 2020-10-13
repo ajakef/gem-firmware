@@ -222,6 +222,7 @@ void GPS_startup(GemConfig* config){
   delay(50);
   delay(50);
   if(config->gps_mode != 3){ // if GPS is set to "on" or "cycled", turn it on now
+    // test using a cold start here, in order to force almanac refresh
     Serial.println(F(PMTK_AWAKE)); // command to wake up GPS
     delay(50);
     Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCONLY));

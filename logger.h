@@ -33,6 +33,7 @@
 #define BATVOLT 1
 
 // From Adafruit GPS library
+#define PMTK_COLD_START "$PMTK103*30" // do not use existing time/location/almanac/ephemeris data. Consider using this on first power-up.
 #define PMTK_SET_NMEA_UPDATE_1HZ  "$PMTK220,1000*1F"
 #define PMTK_SET_BAUD_57600 "$PMTK251,57600*2C"
 #define PMTK_SET_BAUD_9600 "$PMTK251,9600*17"

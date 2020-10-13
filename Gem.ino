@@ -13,8 +13,6 @@ A1: Battery Voltage
 #include "version.h"
 #include <Wire.h>
 #include <SdFat.h> // 512-byte buffer
-//#include <NilRTOS.h> // might not be needed?
-//#include <NilFIFO.h> // might not be needed?
 #include <NilTimer1.h> 
 #include "Adafruit_ADS1015.h"
 #include <EEPROM.h>
@@ -33,7 +31,6 @@ uint8_t GPS_on = 0; // indicates whether the GPS is on, or on standby
 uint8_t firstfile;
 SdFat sd; // SD file system
 SdFile file; // Log file
-//char filename[13] = "FILE0000.TXT"; 
 char filename[13] = "CONFIG.TXT"; 
 RMC G; // structure to hold GPS string info
 
@@ -294,8 +291,6 @@ void loop() {
     if(config.serial_output != 1 && config.serial_output != 2){ //if set (in startup), preserve it
       config.serial_output = 0; // do not send pressure data over serial
     }
-    //config.compression = 1; // default: use compression
-    //config.file_length = FILE_LENGTH_DEFAULT/10;
   }
   Serial.println(F("Configuration:"));
   Serial.print(F("GPS Mode (1-Cycled, 2-On, 3-Off): ")); Serial.println(config.gps_mode);
@@ -304,8 +299,6 @@ void loop() {
   Serial.print(F("LED Shutoff (minutes): ")); Serial.println(config.led_shutoff);
   Serial.print(F("Serial Output (0-off, 1-on): ")); Serial.println(config.serial_output);
   Serial.print(F("ADC Range: ")); Serial.println(config.adc_range);
-  //Serial.print(F("Data Compression (0-off, 1-on): ")); Serial.println(config.compression);
-  //Serial.print(F("File Length (minutes--must be multiple of 10): ")); Serial.println(config.file_length*10);
 
   // set the PGA gain. The INA118 clips at +0.55V, so no sense turning gain up above 8
   if(config.adc_range == 2){ // Don't actually use this setting for Gems with INA118 (v0.98-v1.0)
