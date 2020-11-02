@@ -212,11 +212,14 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
   digitalWrite(LED, LOW);
   digitalWrite(ERRORLED, LOW);
   Serial.println(F(PMTK_STANDBY));
+  Serial.println(F(PMTK_STANDBY));
 }
 
 void GPS_startup(GemConfig* config){
   Serial.begin(9600);
   Serial.println(F(PMTK_SET_BAUD_57600));
+  delay(50);
+  Serial.println(F(PMTK_SET_BAUD_57600)); // send it twice in case there's some problem the first time
   delay(50);
   Serial.begin(57600);
   delay(50);
