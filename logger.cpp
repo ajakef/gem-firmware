@@ -217,6 +217,7 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
 
 void GPS_startup(GemConfig* config){
   Serial.begin(9600);
+  delay(50);
   Serial.println(F(PMTK_SET_BAUD_57600));
   delay(50);
   Serial.println(F(PMTK_SET_BAUD_57600)); // send it twice in case there's some problem the first time
