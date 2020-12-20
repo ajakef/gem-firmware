@@ -16,7 +16,7 @@
 #define FIFO_SIZE_BYTES 300  // size of FIFO: must be long enough to make sure it doesn't fill, but short enough to fit within available SRAM. 
 // If program crashes mysteriously after adding new code, it could be a memory error: try decreasing FIFO_SIZE_BYTES.
 #define FIFO_DIM FIFO_SIZE_BYTES/4
-
+#define ADC_ERROR_THRESHOLD 255
 #define MILLIS_ROLLOVER 8192
 
 #include <Arduino.h>

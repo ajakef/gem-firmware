@@ -129,7 +129,6 @@ void IncrementFilename(char fname[13]){ // change to pointer? does it matter?
 void logstatus(int8_t logging[2]){
   // logging[0] is current status. logging[1] is number of consecutive changed readings.
   // change logging status when 10 changed readings are recorded. This is to ignore switch bouncing.
-  //int8_t switchstatus = digitalRead(SWITCH); // read current switch status
 
   // if switchstatus is currently on, increment switch on count, and change logging status if it's >10
   if(digitalRead(SWITCH) == 1){  // switchstatus
@@ -151,16 +150,9 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
   if(!file->open(filename, O_WRITE | O_TRUNC | O_CREAT)) { 
     error(2); 
   }
-  //Serial.println(20);
-  /*
-  if(config->compression == 0){ // compression off
-    file->println(F("#GemCSV0.85")); 
-    file->println(F("#D,msSamp,ADC,msLag"));
-  }else if(config->compression == 1){ // compression on*/
-    *last_sample = 0; // so it writes the actual value, not the diff, as the first sample in each file
-    file->println(F("#GemCSV0.9"));
-    file->println(F("#DmsSamp,ADC"));
-  //}
+  *last_sample = 0; // so it writes the actual value, not the diff, as the first sample in each file
+  file->println(F("#GemCSV0.9"));
+  file->println(F("#DmsSamp,ADC"));
   file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon"));
   file->println(F("#M,ms,batt(V),temp(C),A2,A3,maxLag,minFree,maxUsed,maxOver,gpsFlag,freeStack1,freeStackIdle"));
 
@@ -299,16 +291,7 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     strncpy(degreebuff, p, 2);
     p += 2;
     degreebuff[2] = '\0';
-    /*
-    long degree = atol(degreebuff) * 10000000;
-    strncpy(degreebuff, p, 2); // minutes
-    p += 3; // skip decimal point
-    strncpy(degreebuff + 2, p, 4);
-    degreebuff[6] = '\0';
-    long minutes = 50 * atol(degreebuff) / 3;
-    G->lat = ((float)(degree+minutes))/10000000.0;
-    */
-    degreef = atof(degreebuff); // 2015/6/8: try this with floats and see if it works.  if yes, change lat too; otherwise revert.
+    degreef = atof(degreebuff); 
     strncpy(degreebuff, p, 2); // minutes
     p += 3; // skip decimal point
     strncpy(degreebuff + 2, p, 4);
@@ -327,7 +310,7 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     strncpy(degreebuff, p, 3);
     p += 3;
     degreebuff[3] = '\0';
-    float degreef = atof(degreebuff); // 2015/6/8: try this with floats and see if it works.  if yes, change lat too; otherwise revert.
+    float degreef = atof(degreebuff);
     strncpy(degreebuff, p, 2); // minutes
     p += 3; // skip decimal point
     strncpy(degreebuff + 2, p, 4);
@@ -372,10 +355,6 @@ uint8_t parseHex(char c) {
     if (c <= 'F')
        return (c - 'A')+10;
 }
-
-
-
-
 
 int16_t SincFilt(int16_t buf1[4], int16_t buf2[4], int16_t buf3[4], int16_t buf4[4], int16_t buf5[4], int16_t buf6[4], int16_t* reading){ // change to pointers?
   // Digital Filter: treat each sample in the buffers as int32 to prevent overruns. 
@@ -511,41 +490,3 @@ int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
   Serial.println(output);
   return(output);
 }
-
-/*
- *     From ReadConfigLine
-      // decide what to do with the current character. 
-      c = file->read();
-      if(c == ' ' || c == '\r') next; // ignore spaces and CR
-
-      // if we hit the comment character '#', skip ahead to the next '\n'
-      if(c == '#'){
-        while(file->available()){
-          c = file->read();
-          if(c == '\n') break; // stop advancing once we hit '\n'
-        }
-      } // end of comment-processing if statement
-  
-  
-      // finally, if we're at this point, check to see if it's a digit. if yes, keep reading numbers until they stop being numbers, then skip to the end of the line.
-      if((c >= '0' && c <= '9')){
-        [(*buffidx)++] = c;
-        while(file->available()){
-          c = file->read();
-          if(c >= '0' && c <= '9'){ // this character is a digit, so add it to buffer
-            buffer[(*buffidx)++] = c;
-          }else{
-            break; // stop reading numbers if we're here; time to skip to the end of the line
-          }
-        } // end of number-reading loop
-  
-        if(c == '\n') break; // if the first character after the digits is \n, break from main loop
-        
-        // if we're here, we found a character that isn't a digit and isn't \n. keep reading until we hit \n.
-        while(file->available()){
-          c = file->read();
-          if(c == '\n') break;
-        }
-      } // end of number-processing if statement
-  
-*/

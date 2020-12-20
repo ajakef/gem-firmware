@@ -26,8 +26,6 @@ v1.0 - First release
 #endif
 
 #include <Wire.h>
-//#include <TwiMaster.h>
-
 #include "Adafruit_ADS1015.h"
 
 /**************************************************************************/
@@ -114,8 +112,7 @@ int16_t Adafruit_ADS1015::read_Differential_0_1_JFA(int8_t *error){
   Wire.beginTransmission(m_i2cAddress);
   Wire.write(ADS1015_REG_POINTER_CONVERT);
   Wire.endTransmission();
-  *error = (2 != Wire.requestFrom(m_i2cAddress, (uint8_t)2));
-  int16_t res = ((Wire.read() << 8) | Wire.read());
-  return (int16_t)res;
+  *error += (2 != Wire.requestFrom(m_i2cAddress, (uint8_t)2));
+  //int16_t res = ((Wire.read() << 8) | Wire.read());
+  return (int16_t)((Wire.read() << 8) | Wire.read());
 }
-
