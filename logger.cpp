@@ -11,17 +11,10 @@ void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConf
     Serial.write((uint8_t)(p->pressure % 256)); // binary data stream
   }
   // write a data line
-  //if(config->compression == 1){
-    file->print(F("D"));
-    file->printField(p->time % MILLIS_ROLLOVER, ',');
-    file->println(p->pressure - *last_sample);
-    *last_sample = p->pressure;
-  /*}else{
-    file->print(F("D,"));
-    file->printField(p->time, ',');
-    file->printField(p->pressure, ',');
-    file->println((uint16_t)millis() - p->time);
-  }*/ // disable uncompressed output
+  file->print(F("D"));
+  file->printField(p->time % MILLIS_ROLLOVER, ',');
+  file->println(p->pressure - *last_sample);
+  *last_sample = p->pressure;
 }
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_on, float* AVCC){
   uint16_t reading;

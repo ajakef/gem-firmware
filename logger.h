@@ -1,18 +1,23 @@
+// use LOGGER_H to ensure that declarations are not run twice
 #ifndef LOGGER_H
 #define LOGGER_H
+
+#define DEBUG true
+#if DEBUG
+  #define FILE_LENGTH_DEFAULT 0.025 // 0.025 minutes is 1.5 sec; speeds up triggering of file-switching errors
+#else
+  #define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
+#endif
 
 // Main User-Configurable Options
 #define DT 2500 // microseconds
 #define BUFFERLENGTH 80 // GPS buffer length (characters, bytes)
-//#define FILE_LENGTH 360000 // length of output files (number of samples)
-//#define FILE_LENGTH 2000
-#define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
 #define GPS_QUOTA 20 // number of good GPS samples that must be logged before GPS is put on standby
 #define GPS_QUOTA_DEFAULT 20
 #define GPS_CYC 90000 // interval in samples between GPS turning on and logging until quota is reached) 15 minutes
 #define GPS_CYC_DEFAULT 15 // minutes, for the config
 #define GPS_RESET_THRESHOLD 20 // reset the GPS if it records 20 PPS pulses without a good NMEA string
-#define META_CYC 100 // interval (in samples) between metadata reports (10 s)
+#define META_CYC 100 // interval (in samples) between metadata reports
 #define FIFO_SIZE_BYTES 300  // size of FIFO: must be long enough to make sure it doesn't fill, but short enough to fit within available SRAM. 
 // If program crashes mysteriously after adding new code, it could be a memory error: try decreasing FIFO_SIZE_BYTES.
 #define FIFO_DIM FIFO_SIZE_BYTES/4
@@ -132,5 +137,5 @@ int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx);
 //#define PMTK_Q_RELEASE "$PMTK605*31"// ask for the release and version
 //#define PGCMD_ANTENNA "$PGCMD,33,1*6C" // request for updates on antenna status
 //#define PGCMD_NOANTENNA "$PGCMD,33,0*6D"
-//#define PMTK_ENABLE_SBAS "$PMTK313,1*2E"
+//#define PMTK_ENABLE_SBAS "$PMTK313,1*2E" // "satellite-based augmentation system". Systems are available for several regions/continents
 //#define PMTK_ENABLE_WAAS "$PMTK301,2*2E"

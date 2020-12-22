@@ -359,7 +359,7 @@ void loop() {
         continue;
       }
       // if we're here, we care about the character and it isn't the end of the string, so add it to the buffer and increment buffidx.
-      buffer[buffidx++] = c;
+      buffer[buffidx++] = c; // postfix ++ returns original buffidx and then increments buffidx, which is what we want
       // safety feature: if the buffer reaches its max length, stop listening and reset everything
       if(buffidx >= (BUFFERLENGTH-1)){
         file.print("E,"); file.println(buffer);// 2016-07-03
@@ -412,7 +412,7 @@ void loop() {
     }
     
     // switch files once we've recorded the sample limit
-    if(sample_count % (FILE_LENGTH_DEFAULT * 60L * 100L) == 0 && sample_count > 0){ // switch files if config.file_length reached--factor of 10 needed
+    if(sample_count % (uint32_t)(FILE_LENGTH_DEFAULT * 60L * 100L) == 0 && sample_count > 0){ 
       EndFile(&file); // close the old file
       IncrementFilename(filename); // move to the next filename (e.g., FILE0001.TXT to FILE0002.TXT. Note that this does not make sure that the new file name is not already taken!)
       OpenNewFile(&sd, filename, &file, &config, &last_sample); // open the new file
