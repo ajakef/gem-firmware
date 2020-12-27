@@ -19,39 +19,9 @@ products from Adafruit!
 v1.0 - First release
 */
 /**************************************************************************/
-#if ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
-
 #include <Wire.h>
 #include "Adafruit_ADS1015.h"
-
-/**************************************************************************/
-/*!
-@brief Abstract away platform differences in Arduino wire library
-*/
-/**************************************************************************/
-static uint8_t i2cread(void) {
-#if ARDUINO >= 100
-  return Wire.read();
-#else
-  return Wire.receive();
-#endif
-}
-/**************************************************************************/
-/*!
-@brief Abstract away platform differences in Arduino wire library
-*/
-/**************************************************************************/
-static void i2cwrite(uint8_t x) {
-#if ARDUINO >= 100
-  Wire.write((uint8_t)x);
-#else
-  Wire.send(x);
-#endif
-}
 
 /**************************************************************************/
 /*!
@@ -89,7 +59,7 @@ void Adafruit_ADS1015::setGain(adsGain_t gain){
   m_gain = gain;
 }
 //////////////////////////
-void Adafruit_ADS1015::request_Differential_0_1_JFA(){
+void Adafruit_ADS1015::request_Differential_0_1(){
     // Start with default values
   uint16_t config = ADS1015_REG_CONFIG_CQUE_NONE | // Disable the comparator (default val)
                     ADS1015_REG_CONFIG_CLAT_NONLAT | // Non-latching (default val)
@@ -108,11 +78,10 @@ void Adafruit_ADS1015::request_Differential_0_1_JFA(){
   Wire.endTransmission();
 }
 
-int16_t Adafruit_ADS1015::read_Differential_0_1_JFA(int8_t *error){
+int16_t Adafruit_ADS1015::read_ADC(int8_t *error){
   Wire.beginTransmission(m_i2cAddress);
   Wire.write(ADS1015_REG_POINTER_CONVERT);
   Wire.endTransmission();
   *error += (2 != Wire.requestFrom(m_i2cAddress, (uint8_t)2));
-  //int16_t res = ((Wire.read() << 8) | Wire.read());
   return (int16_t)((Wire.read() << 8) | Wire.read());
 }

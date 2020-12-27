@@ -57,7 +57,7 @@ int16_t FIR_buffer_4[4] = {0, 0, 0, 0};
 int16_t FIR_buffer_5[4] = {0, 0, 0, 0};
 int16_t FIR_buffer_6[4] = {0, 0, 0, 0};
 int16_t ADC_F;
-uint32_t mmm=0;
+//uint32_t mmm=0;
 uint16_t tsamp[4] = {0, 0, 0, 0};
 int16_t reading;
 int16_t last_sample = 0;
@@ -89,17 +89,15 @@ NIL_THREAD(Thread1, arg) { // Declare thread function for thread 1.
       if(FIR_count > 3){ // changed from FIR_count==4 to try to fix ERR_A--JFA 2016-03-07
         FIR_count = 0;
       }
-      reading = adc.read_Differential_0_1_JFA(&AdcError); // read the current sample; increment AdcError if problem
-      adc.request_Differential_0_1_JFA(); // request the next sample; will be read next iteration
+      reading = adc.read_ADC(&AdcError); // read the current sample; increment AdcError if problem
+      adc.request_Differential_0_1(); // request the next sample; will be read next iteration
       
-      mmm = micros();
       // run the filter if this is a decimation sample.  
       if(FIR_count == 0){
         ADC_F = SincFilt(FIR_buffer_1, FIR_buffer_2, FIR_buffer_3, FIR_buffer_4, 
                         FIR_buffer_5, FIR_buffer_6, &reading); // filter has to be done before updating buffers
       }
 
-      mmm = micros() - mmm;
       // shift the data between buffers and add the new reading
       FIR_buffer_1[FIR_count] = FIR_buffer_2[FIR_count];
       FIR_buffer_2[FIR_count] = FIR_buffer_3[FIR_count];
@@ -186,9 +184,9 @@ void setup() {
   Serial.print(F("Gem Serial Number: "));
   Serial.println(SN);
 
-  Serial.println(F("To program new serial number 'XXX', enter 'SN:XXX'"));
-  Serial.println(F("For Lab Mode (streaming ascii data over Serial; no GPS), enter 'lab'"));
-  Serial.println(F("For Binary Mode (streaming binary data over Serial; no GPS), enter 'bin'"));
+  Serial.println(F("To change serial number to 'XXX', enter 'SN:XXX'"));
+  Serial.println(F("To stream ascii data by Serial (no GPS), enter 'lab'"));
+  Serial.println(F("To stream binary data by Serial (no GPS), enter 'bin'"));
   delay(200);
   // Configure the GPS
   GPS_startup(&config); 
@@ -223,7 +221,6 @@ void loop() {
       for(int i = 0; i < 3; i++){
         buffer[i] = Serial.read();
       }
-//      if(Serial.read() == 'S' && Serial.read() == 'N' && Serial.read() == ':'){ // If "SN:" prefix is detected, write the new serial number to EEPROM.
       if(buffer[0] == 'S' && buffer[1] == 'N' && buffer[2] == ':'){ // If "SN:" prefix is detected, write the new serial number to EEPROM.
         SN = 0;
         for(int i = 0; i < 3; i++){

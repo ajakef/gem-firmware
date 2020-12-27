@@ -89,7 +89,6 @@ void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
                 10*(fname[6]-'0') + (fname[7]-'0');
       if((file->fileSize() > 0) && (current_fn > greatest_fn)){
         greatest_fn = current_fn;  
- //       Serial.println(fname);
       }      
     }
     file->close();
@@ -104,12 +103,10 @@ void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
   fname[8] = '.'; fname[9] = '0'+((*SN/100) % 10); fname[10] = '0'+((*SN/10) % 10); fname[11] = '0'+(*SN % 10); // set the serial number as the filename extension
   Serial.println(greatest_fn);
   Serial.println(fname);
-  // These two apparently pointless lines are needed to prevent
-  // delays on the first write to SD.
-//  file->open("FILE0000.TXT", O_WRITE | O_TRUNC | O_CREAT);
-    file->open("FILE0000.TXT", O_CREAT);
-  file->close();
 
+  // These two apparently pointless lines are needed to prevent delays on the first write to SD.
+  file->open("FILE0000.TXT", O_CREAT);
+  file->close();
 }
 void IncrementFilename(char fname[13]){ // change to pointer? does it matter?
   uint16_t i = (1 + 1000*(fname[4]-'0') + 100*(fname[5]-'0') + 10*(fname[6]-'0') + (fname[7]-'0')) % 10000; 
@@ -139,7 +136,6 @@ void logstatus(int8_t logging[2]){
 }
 
 void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, int16_t* last_sample){
-  //Serial.println(10);
   if(!file->open(filename, O_WRITE | O_TRUNC | O_CREAT)) { 
     error(2); 
   }
@@ -169,18 +165,18 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
 
 void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint8_t* GPS_count){
   // codes: 1 (acq, GPS off), 2 (acq, GPS searching), 3 (acq, GPS fix)
-  uint8_t s100 = *sample_count % 100;
-  if(s100 == 0){
+  //uint8_t s100 = *sample_count % 100;
+  if((*sample_count % 100) == 0){
     digitalWrite(LED, HIGH);
-  }else if(s100 == 2){
+  }else if((*sample_count % 100) == 2){
     digitalWrite(LED, LOW);
-  }else if((s100 == 20) && (*GPS_on == 1)){ // GPS on
+  }else if(((*sample_count % 100) == 20) && (*GPS_on == 1)){ // GPS on
     digitalWrite(LED, HIGH);
-  }else if((s100 == 22) && (*GPS_on == 1)){ // GPS on
+  }else if(((*sample_count % 100) == 22) && (*GPS_on == 1)){ // GPS on
     digitalWrite(LED, LOW);
-  }else if((s100 == 40) && (*GPS_count > 0)){ // GPS on and strings logged
+  }else if(((*sample_count % 100) == 40) && (*GPS_count > 0)){ // GPS on and strings logged
     digitalWrite(LED, HIGH);
-  }else if((s100 == 42) && (*GPS_count > 0)){ // GPS on and strings logged
+  }else if(((*sample_count % 100) == 42) && (*GPS_count > 0)){ // GPS on and strings logged
     digitalWrite(LED, LOW);
   }
 }
@@ -215,7 +211,6 @@ void GPS_startup(GemConfig* config){
     Serial.println(F(PMTK_AWAKE)); // command to wake up GPS
     delay(50);
     Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCONLY));
-    //Serial.println(F(PMTK_SET_NMEA_OUTPUT_ALLDATA));
     delay(50);
     Serial.println(F(PMTK_SET_NMEA_UPDATE_1HZ));
   }else{ // if it's set to "off", turn it to standby
@@ -424,14 +419,14 @@ void ReadConfig(SdFile *file, char *buffer, uint8_t *buffidx, GemConfig *config)
   //if(x == 0){ 
   //  config->compression = 0; // no compression
   //}else{
-    config->compression = 1; // default: compression mode 1 (omit certain commas, log pressure differences, skip data millisLag, 13-bit millis
+  //  config->compression = 1; // default: compression mode 1 (omit certain commas, log pressure differences, skip data millisLag, 13-bit millis
   //}
   // parse eighth line: file length
   //x = ReadConfigLine(file, buffer, buffidx) / 10;
   //if(x > 0 && x < pow(2,8)){ 
   //  config->file_length = x; // file length in tens of minutes
   //}else{
-    config->file_length = FILE_LENGTH_DEFAULT/10;
+  //  config->file_length = FILE_LENGTH_DEFAULT/10;
   //}*/
 }
 int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){

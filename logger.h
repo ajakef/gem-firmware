@@ -2,12 +2,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#define DEBUG false
-#if DEBUG
-  #define FILE_LENGTH_DEFAULT 0.025 // 0.025 minutes is 1.5 sec; speeds up triggering of file-switching errors
-#else
-  #define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
-#endif
+#define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
 
 // Main User-Configurable Options
 #define DT 2500 // microseconds
@@ -35,8 +30,8 @@
 #define LED 4
 #define ERRORLED 5
 #define SWITCH 6
-#define TEMP 0
-#define BATVOLT 1
+#define TEMP 0 // analog
+#define BATVOLT 1 // analog
 
 // From Adafruit GPS library
 #define PMTK_COLD_START "$PMTK103*30" // do not use existing time/location/almanac/ephemeris data. Consider using this on first power-up.
@@ -74,8 +69,8 @@ struct GemConfig {
   uint8_t adc_range; // 0 for +/-0.256 V (e.g., infrasound--default), 1 for +/-0.512 V
   uint8_t led_shutoff; // 0 (never turn off), 1-255 (number of minutes to leave on)
   uint8_t serial_output; // 0 to send all data to SD only; 1 to send all data to SD and pressure data only to Serial too
-  uint8_t compression; // 0 for no compression, 1 for pressure differencing, comma-skipping, and 13-bit millis
-  uint8_t file_length; // 0 for +/-0.256 V (e.g., infrasound--default), 1 for +/-2.048 V
+  //uint8_t compression; // 0 for no compression, 1 for pressure differencing, comma-skipping, and 13-bit millis
+  //uint8_t file_length; // 0 for +/-0.256 V (e.g., infrasound--default), 1 for +/-2.048 V
 };
 
 // Type for a data record.
@@ -91,7 +86,7 @@ struct RMC {
   float second;
   float lat;
   float lon;
-  uint16_t year;
+  uint8_t year;
   uint8_t month;
   uint8_t day;
   uint16_t millisParsed;

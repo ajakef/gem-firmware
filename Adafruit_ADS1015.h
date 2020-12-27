@@ -25,12 +25,7 @@ v1.1 - Added ADS1115 support - W. Earl
 #ifndef ADS1015_H
 #define ADS1015_H
 
-#if ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
-
 #include <Wire.h>
 
 //I2C ADDRESS/BITS
@@ -96,16 +91,9 @@ protected:
  public:
   Adafruit_ADS1015(uint8_t i2cAddress = ADS1015_ADDRESS);
   void begin(void);
-  uint16_t readADC_SingleEnded(uint8_t channel);
-  int16_t readADC_Differential_0_1(void);
-  int16_t readADC_Differential_0_1_JFA(int8_t *error);
-  void request_Differential_0_1_JFA();
-  int16_t read_Differential_0_1_JFA(int8_t *error);
-  int16_t readADC_Differential_2_3(void);
-  void startComparator_SingleEnded(uint8_t channel, int16_t threshold);
-  int16_t getLastConversionResults();
+  void request_Differential_0_1();
+  int16_t read_ADC(int8_t *error);
   void setGain(adsGain_t gain);
-  adsGain_t getGain(void);
 
  private:
 };

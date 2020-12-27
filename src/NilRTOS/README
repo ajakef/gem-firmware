@@ -1,0 +1,1 @@
+2020-12-27 JFA: in order to make the Gem firmware more portable, I'm modifying the #includes to refer to local files when possible. Also made some changes in NilTimer1.c to decrease memory use when starting the timer, but it probably won't make much difference since that function only runs briefly at the beginning.
