@@ -23,6 +23,7 @@
 #define FIFO_DIM FIFO_SIZE_BYTES/4
 #define ADC_ERROR_THRESHOLD 255
 #define MILLIS_ROLLOVER 8192
+#define FIRST_GPS_CYC_LENGTH 90000 // samples in 15 minutes. The almanac takes 12.5 minutes to load.
 
 #include <Arduino.h>
 #include "src/SdFat/SdFat.h"

@@ -394,8 +394,11 @@ void loop() {
       GPS_on = 1;
     }
     
-    // Check to see if enough GPS strings have been collected this cycle, and put the GPS on standby if yes.
-    if(config.gps_mode != 2 && GPS_count >= config.gps_quota){ // if gps mode is cycled or off, and GPS_count > quota, turn the gps off.
+    /*  Check to see if enough GPS strings have been collected this cycle, and put the GPS on standby if yes.
+        Additionally, to turn the GPS off, this must either not be the first file, or the sample count must be high
+        enough so that there's enough time to refresh the GPS almanac. This should catch leap seconds early.
+    */
+    if(config.gps_mode != 2 && (GPS_count >= config.gps_quota) && (!firstfile || (sample_count > FIRST_GPS_CYC_LENGTH))){
       Serial.println(F(PMTK_STANDBY));
       GPS_count = 0;
       pps_count = 0;
