@@ -87,7 +87,7 @@ void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
   
       current_fn = 1000*(fname[4]-'0') + 100*(fname[5]-'0') + 
                 10*(fname[6]-'0') + (fname[7]-'0');
-      if(current_fn > greatest_fn){
+      if((file->fileSize() > 0) && (current_fn > greatest_fn)){
         greatest_fn = current_fn;  
  //       Serial.println(fname);
       }      
