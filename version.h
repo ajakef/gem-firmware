@@ -1,1 +1,1 @@
-#define FIRMWARE_VERSION "0.95"
+#define FIRMWARE_VERSION "0.9495"
