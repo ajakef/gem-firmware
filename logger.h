@@ -27,7 +27,7 @@
 
 #include <Arduino.h>
 #include "src/SdFat/SdFat.h"
-#include <NilFIFO.h>
+#include "src/NilRTOS/NilFIFO.h"
 #include "Adafruit_ADS1015.h"
 
 // Pinout
