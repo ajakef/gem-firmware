@@ -14,7 +14,7 @@ A1: Battery Voltage
 #include <Wire.h>
 #include "src/SdFat/SdFat.h" // 512-byte buffer
 #include "src/NilRTOS/NilTimer1.h"
-#include "Adafruit_ADS1015.h"
+#include "src/ADS1115/ADS1115.h"
 #include <EEPROM.h>
 #include "logger.h"
 

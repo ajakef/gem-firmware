@@ -23,7 +23,7 @@
 #include <Arduino.h>
 #include "src/SdFat/SdFat.h"
 #include "src/NilRTOS/NilFIFO.h"
-#include "Adafruit_ADS1015.h"
+#include "src/ADS1115/ADS1115.h"
 
 // Pinout
 #define PPS 2
