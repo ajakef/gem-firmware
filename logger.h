@@ -2,7 +2,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#define DEBUG true
+#define DEBUG false
 #if DEBUG
   #define FILE_LENGTH_DEFAULT 0.025 // 0.025 minutes is 1.5 sec; speeds up triggering of file-switching errors
 #else
@@ -25,7 +25,7 @@
 #define MILLIS_ROLLOVER 8192
 
 #include <Arduino.h>
-#include <SdFat.h>
+#include "src/SdFat/SdFat.h"
 #include <NilFIFO.h>
 #include "Adafruit_ADS1015.h"
 
