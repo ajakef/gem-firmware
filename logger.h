@@ -93,9 +93,9 @@ struct RMC {
 };
 
 // Functions declarations:
-void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConfig *config, int16_t *last_sample);
+void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t *last_sample);
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_flag, float* AVCC);
-void printRMC(RMC* G, SdFile* file, volatile uint16_t* pps_millis);;
+void printRMC(RMC* G, SdFile* file, volatile float* pps_millis);;
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN);
 void IncrementFilename(char fname[13]);
 void logstatus(int8_t logging[2]);

@@ -35,7 +35,7 @@ char filename[13] = "CONFIG.TXT";
 RMC G; // structure to hold GPS string info
 
 volatile uint8_t pps = 0;
-volatile uint16_t pps_millis = 0;
+volatile float pps_millis = 0;
 uint8_t pps_count = 0;
 uint8_t pps_print = 0;
 int8_t logging[2] = {0, 0}; // if necessary, could consolidate 'sampling' and 'firstfile' into logging by using codes for logging[0] instead of just 0/1
@@ -324,7 +324,7 @@ void loop() {
     // it search for a fix immediately, saving time.
     while(GPS_on && (Serial.available() > 0)){ 
       if(pps_print){
-        file.print(F("P,")); file.println(pps_millis % MILLIS_ROLLOVER);
+        file.print(F("P,")); file.println(fmod(pps_millis,MILLIS_ROLLOVER));
         pps_print = 0;
         if(config.led_shutoff == 0 || (firstfile == 1 && (sample_count/6000) < config.led_shutoff)){
           digitalWrite(ERRORLED, HIGH); // blink red when the PPS arrives
@@ -440,7 +440,7 @@ void loop() {
 //////////////////////////////////////
 void PPS_INT(){
   pps = 1;
-  pps_millis = millis();
+  pps_millis = (float)micros()/1000.0;
 }
 //////////////////////////////////////
 void error(int8_t code){

@@ -2,7 +2,7 @@
 #include <EEPROM.h>
 #include "version.h"
 
-void printdata(Record_t* p, SdFile* file, volatile uint16_t* pps_millis, GemConfig *config, int16_t* last_sample){
+void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t* last_sample){
   // print data to the serial connection if needed
   if(config->serial_output == 1){
     Serial.println(p->pressure); // ascii data stream
@@ -44,14 +44,14 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   fifo->resetMaxOverrun();
   fifo->resetMinFree();
 }
-void printRMC(RMC* G, SdFile* file, volatile uint16_t *pps_millis){
-  if((uint16_t)(millis()-*pps_millis) > 1000){
-    file->print(F("E,1,")); file->printField(millis(), ','); file->printField(*pps_millis, ','); file->println((uint16_t)(millis()-*pps_millis));
+void printRMC(RMC* G, SdFile* file, volatile float *pps_millis){
+  if((uint16_t)(millis()-fmod(*pps_millis, pow(2,16))) > 1000){
+    file->print(F("E,1,")); file->printField(millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ','); file->println((uint16_t)(millis()-fmod(*pps_millis, pow(2, 16))));
     return; // pps_millis probably matches a different sample if this is the case
   }
-  if(G->year == 2000){
-    file->print(F("E,2,")); file->println(G->year);
-    return; // year=2000 is a missing value
+  if(G->year == 0){ // year code 0 is 2000
+    file->print(F("E,2,")); file->println(G->year + 2000);
+    return; // year=2000 (code 0) is a missing value
   }
   if(G->lat == 0.0){
     file->print(F("E,3,"));file->println(G->lat);
@@ -62,8 +62,8 @@ void printRMC(RMC* G, SdFile* file, volatile uint16_t *pps_millis){
     return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
   }
   file->print("G,");
-  file->printField(*pps_millis % MILLIS_ROLLOVER, ',');file->printField(G->millisParsed-*pps_millis, ',');
-  file->printField(G->year, ',');
+  file->printField(fmod(*pps_millis, MILLIS_ROLLOVER), ',');file->printField(G->millisParsed-fmod(*pps_millis, pow(2,16)), ',');
+  file->printField(G->year + 2000, ',');
   file->printField(G->month, ',');
   file->printField(G->day, ',');
   file->printField(G->hour, ',');
@@ -315,11 +315,11 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     p = strchr(p, ',')+1;
     G->day = (uint32_t)atof(p) / 10000;
     G->month = ((uint32_t)atof(p) % 10000) / 100;
-    G->year = ((uint32_t)atof(p) % 100) + 2000;
-    if(G->year == 2000){ // 2000 is missing value for year
+    G->year = ((uint32_t)atof(p) % 100);
+    if(G->year == 0){ // 00 is missing value for year
       failure_code = 6; // year is the missing value of "2000"
     }
-    if(G->year > 2040){ // bad strings often have years far in the future
+    if(G->year > 40){ // bad strings often have years far in the future (here, 2040)
       failure_code = 7; // year is improbably far in the future. I doubt the Gem will still be in use in 2040!
     }
     if(G->hour > 23 || G->minute > 59 || G->second > 59 || G->day > 31 || G->month > 12){ // all of these values are impossible and common in bad strings
