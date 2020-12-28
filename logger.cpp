@@ -140,9 +140,10 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
     error(2); 
   }
   *last_sample = 0; // so it writes the actual value, not the diff, as the first sample in each file
-  file->println(F("#GemCSV0.9"));
+  //file->println(F("#GemCSV0.9"));
+  file->println(F("#GemCSV0.91"));
   file->println(F("#DmsSamp,ADC"));
-  file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon"));
+  file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon")); // the only difference between 0.91 and 0.9 is that msPPS and msLag are now floats
   file->println(F("#M,ms,batt(V),temp(C),A2,A3,maxLag,minFree,maxUsed,maxOver,gpsFlag,freeStack1,freeStackIdle"));
 
   file->print(F("S,"));
