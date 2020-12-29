@@ -45,37 +45,6 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   fifo->resetMinFree();
 }
 
-/* printRMC and parseRMC are problematic because they repeat checks on the data independently. Those 
- * checks need to be turned into functions for consistency.*/
-void printRMC(RMC* G, SdFile* file, volatile float *pps_millis){
-  if(((uint16_t)millis()-fmod(*pps_millis, pow(2,16))) > 1000){
-    file->print(F("E,1,")); file->printField(millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->println((uint16_t)(millis()-fmod(*pps_millis, pow(2, 16))));
-    return; // pps_millis probably matches a different sample if this is the case
-  }
-  if(G->year == 0){ // year code 0 is 2000
-    file->print(F("E,2,")); file->println(G->year + 2000);
-    return; // year=2000 (code 0) is a missing value
-  }
-  if(G->lat == 0.0){
-    file->print(F("E,3,"));file->println(G->lat);
-    return; // lat = 0 is a missing value
-  } // lat = 0 is a missing value code and it's also the equator. Bad design, but even if we're on the equator within about a meter, only a fraction of strings will be rejected.
-  if(G->second != (float)((int)G->second)){
-    file->print(F("E,4,")); file->println(G->second);
-    return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
-  }
-  file->print("G,");
-  file->printField(fmod(*pps_millis, MILLIS_ROLLOVER), ',');file->printField(G->millisParsed-fmod(*pps_millis, pow(2,16)), ',');
-  file->printField(G->year + 2000, ',');
-  file->printField(G->month, ',');
-  file->printField(G->day, ',');
-  file->printField(G->hour, ',');
-  file->printField(G->minute, ',');
-  file->printField(G->second, ',', 1); // 0 decimal points (s)
-  file->printField(G->lat, ',', 5); // 5 decimal points (~1m)
-  file->println(G->lon, 5); // 5 decimal points (~1m)
-}
-
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
   int16_t current_fn = -1;
   int16_t greatest_fn = -1;
@@ -219,6 +188,47 @@ void GPS_startup(GemConfig* config){
   }
 }
 
+// Use these functions for RMC checks to ensure they're applied consistently. Consider making these methods of G.
+bool checkRMC_fresh(volatile float *pps_millis){ return (((uint16_t)millis()-fmod(*pps_millis, pow(2,16))) > 1000); }
+bool checkRMC_yearmissing(RMC* G){ return G->year == 0;}
+bool checkRMC_yearwrong(RMC* G){ return G->year > 40;}
+bool checkRMC_latlon(RMC* G){return (G->lat == 0) || (G->lat > 90) || (G->lat < -90) || (G->lon == 0) || (G->lon > 180) || (G->lon < -180);}
+bool checkRMC_secfloat(RMC* G) {return (G->second != (float)(int)G->second);}
+bool checkRMC_badtime(RMC* G) {return (G->hour > 23 || G->minute > 59 || G->second > 59 || G->day > 31 || G->month > 12);}
+
+void printRMC(RMC* G, SdFile* file, volatile float *pps_millis){
+  //if(((uint16_t)millis()-fmod(*pps_millis, pow(2,16))) > 1000){
+  if(checkRMC_fresh(pps_millis)){
+    file->print(F("E,1,")); file->printField(millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->println((uint16_t)(millis()-fmod(*pps_millis, pow(2, 16))));
+    return; // pps_millis probably matches a different sample if this is the case
+  }
+  //if(G->year == 0){ // year code 0 is 2000
+  if(checkRMC_yearmissing(G) || checkRMC_yearwrong(G)){
+    file->print(F("E,2,")); file->println(G->year + 2000);
+    return; // year=2000 (code 0) is a missing value
+  }
+  //if(G->lat == 0.0){
+  if(checkRMC_latlon(G)){
+    file->print(F("E,3,"));file->printField(G->lat, ',', 5);file->println(G->lon, 5);
+    return; // lat = 0 is a missing value
+  } // lat = 0 is a missing value code and it's also the equator. Bad design, but even if we're on the equator within about a meter, only a fraction of strings will be rejected.
+  //if(G->second != (float)((int)G->second)){
+  if(checkRMC_secfloat(G)){
+    file->print(F("E,4,")); file->println(G->second);
+    return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
+  }
+  file->print("G,");
+  file->printField(fmod(*pps_millis, MILLIS_ROLLOVER), ',');file->printField(G->millisParsed-fmod(*pps_millis, pow(2,16)), ',');
+  file->printField(G->year + 2000, ',');
+  file->printField(G->month, ',');
+  file->printField(G->day, ',');
+  file->printField(G->hour, ',');
+  file->printField(G->minute, ',');
+  file->printField(G->second, ',', 1); // 0 decimal points (s)
+  file->printField(G->lat, ',', 5); // 5 decimal points (~1m)
+  file->println(G->lon, 5); // 5 decimal points (~1m)
+}
+
 //////////////////////////////
 uint8_t ParseRMC(char* nmea, RMC* G) {
   // Heavily modified from Adafruit_GPS library: required attribution to Adafruit follows. Any bugs are my fault (JFA), not Adafruit's.
@@ -261,7 +271,8 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     G->minute = (((uint32_t)atof(p)) % 10000) / 100;
     G->second = atof(p+4);// - ((float)G->hour)*10000 - ((float)G->minute)*100;
 
-    if(G->second != ((float)((int)G->second))){ // if second isn't an int, don't trust it
+    //if(G->second != ((float)((int)G->second))){ // if second isn't an int, don't trust it
+    if(checkRMC_secfloat(G)){
       failure_code = 2; // "seconds" value is not an int, so we ignore it just to be safe
     }
     p = strchr(p, ',')+1;
@@ -290,9 +301,9 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     p = strchr(p, ',')+1;
     if(p[0] == 'S') G->lat = -G->lat;
     
-    if(G->lat == 0.0){ // 0.0 is missing value for lat--bad choice by GPS manufacturer
-      failure_code = 5; // lat is equal to the missing value. If you're within a few m of the equator, this will sometimes happen spuriously.
-    }
+    //if(G->lat == 0.0){ // 0.0 is missing value for lat--bad choice by GPS manufacturer
+    //  failure_code = 5; // lat is equal to the missing value. If you're within a few m of the equator, this will sometimes happen spuriously.
+    //}
 
     // parse longitude
     p = strchr(p, ',')+1;
@@ -310,6 +321,10 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     G->lon = degreef + minutesf/60;
     p = strchr(p, ',')+1;
     if(p[0] == 'W') G->lon = -G->lon;
+
+    if(checkRMC_latlon(G)){
+      failure_code = 5;
+    }
     
     p = strchr(p, ',')+1; // speed: discard
     p = strchr(p, ',')+1; // angle: discard
@@ -319,10 +334,12 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     G->day = (uint32_t)atof(p) / 10000;
     G->month = ((uint32_t)atof(p) % 10000) / 100;
     G->year = ((uint32_t)atof(p) % 100);
-    if(G->year == 0){ // 0 is missing value for year
+    //if(G->year == 0){ // 0 is missing value for year
+    if(checkRMC_yearmissing(G)){
       failure_code = 6; // 
     }
-    if(G->year > 40){ // bad strings often have years far in the future (here, 2040)
+    //if(G->year > 40){ // bad strings often have years far in the future (here, 2040)
+    if(checkRMC_yearwrong(G)){
       failure_code = 7; // year is improbably far in the future
     }
     if(G->hour > 23 || G->minute > 59 || G->second > 59 || G->day > 31 || G->month > 12){ // all of these values are impossible and common in bad strings

@@ -2,6 +2,9 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
+// setting the SERIAL buffer sizes here doesn't seem to do anything, probably due to conflict with dependencies
+//#define SERIAL_TX_BUFFER_SIZE 64
+//#define SERIAL_RX_BUFFER_SIZE 64
 #define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
 
 // Main User-Configurable Options
@@ -91,6 +94,13 @@ struct RMC {
   uint8_t day;
   uint16_t millisParsed;
 };
+
+bool checkRMC_fresh(volatile float *pps_millis);
+bool checkRMC_yearmissing(RMC* G);
+bool checkRMC_yearwrong(RMC* G);
+bool checkRMC_latlon(RMC* G);
+bool checkRMC_secfloat(RMC* G);
+bool checkRMC_badtime(RMC* G);
 
 // Functions declarations:
 void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t *last_sample);
