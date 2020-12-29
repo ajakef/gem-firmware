@@ -44,9 +44,12 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   fifo->resetMaxOverrun();
   fifo->resetMinFree();
 }
+
+/* printRMC and parseRMC are problematic because they repeat checks on the data independently. Those 
+ * checks need to be turned into functions for consistency.*/
 void printRMC(RMC* G, SdFile* file, volatile float *pps_millis){
-  if((uint16_t)(millis()-fmod(*pps_millis, pow(2,16))) > 1000){
-    file->print(F("E,1,")); file->printField(millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ','); file->println((uint16_t)(millis()-fmod(*pps_millis, pow(2, 16))));
+  if(((uint16_t)millis()-fmod(*pps_millis, pow(2,16))) > 1000){
+    file->print(F("E,1,")); file->printField(millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->println((uint16_t)(millis()-fmod(*pps_millis, pow(2, 16))));
     return; // pps_millis probably matches a different sample if this is the case
   }
   if(G->year == 0){ // year code 0 is 2000
@@ -74,8 +77,6 @@ void printRMC(RMC* G, SdFile* file, volatile float *pps_millis){
 }
 
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
-//  SdFile file;
-  
   int16_t current_fn = -1;
   int16_t greatest_fn = -1;
   sd->chdir("/",true);
@@ -108,7 +109,7 @@ void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
   file->open("FILE0000.TXT", O_CREAT);
   file->close();
 }
-void IncrementFilename(char fname[13]){ // change to pointer? does it matter?
+void IncrementFilename(char fname[13]){
   uint16_t i = (1 + 1000*(fname[4]-'0') + 100*(fname[5]-'0') + 10*(fname[6]-'0') + (fname[7]-'0')) % 10000; 
   fname[4] = i/1000 + '0';
   fname[5] = (i/100) % 10 + '0';
@@ -166,7 +167,6 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
 
 void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint8_t* GPS_count){
   // codes: 1 (acq, GPS off), 2 (acq, GPS searching), 3 (acq, GPS fix)
-  //uint8_t s100 = *sample_count % 100;
   if((*sample_count % 100) == 0){
     digitalWrite(LED, HIGH);
   }else if((*sample_count % 100) == 2){
@@ -249,7 +249,7 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
       failure_code = 1; // bad checksum
     }
   }
-  char degreebuff[10];
+  char degreebuff[10]; // can this be dropped?
   if(strstr(nmea, "$GPRMC")) {
     G->millisParsed = millis();
    // found RMC
@@ -299,12 +299,14 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     strncpy(degreebuff, p, 3);
     p += 3;
     degreebuff[3] = '\0';
-    float degreef = atof(degreebuff);
+    //float degreef = atof(degreebuff); // 2020-12-28
+    degreef = atof(degreebuff); // 2020-12-28
     strncpy(degreebuff, p, 2); // minutes
     p += 3; // skip decimal point
     strncpy(degreebuff + 2, p, 4);
     degreebuff[6] = '\0';
-    float minutesf = atof(degreebuff)/10000;
+    //float minutesf = atof(degreebuff)/10000; // 2020-12-28
+    minutesf = atof(degreebuff)/10000; // 2020-12-28
     G->lon = degreef + minutesf/60;
     p = strchr(p, ',')+1;
     if(p[0] == 'W') G->lon = -G->lon;
@@ -317,11 +319,11 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     G->day = (uint32_t)atof(p) / 10000;
     G->month = ((uint32_t)atof(p) % 10000) / 100;
     G->year = ((uint32_t)atof(p) % 100);
-    if(G->year == 0){ // 00 is missing value for year
-      failure_code = 6; // year is the missing value of "2000"
+    if(G->year == 0){ // 0 is missing value for year
+      failure_code = 6; // 
     }
     if(G->year > 40){ // bad strings often have years far in the future (here, 2040)
-      failure_code = 7; // year is improbably far in the future. I doubt the Gem will still be in use in 2040!
+      failure_code = 7; // year is improbably far in the future
     }
     if(G->hour > 23 || G->minute > 59 || G->second > 59 || G->day > 31 || G->month > 12){ // all of these values are impossible and common in bad strings
       failure_code = 8; // one of the date/time values is impossible

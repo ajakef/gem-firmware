@@ -21,7 +21,6 @@ A1: Battery Voltage
 // Declare FIFO with overrun and minimum free space statistics.
 NilStatsFIFO<Record_t, FIFO_DIM> fifo; 
 
-GemConfig config; // configuration info
 Adafruit_ADS1115 adc; // should be small--under 10 bytes
 char buffer[BUFFERLENGTH]; // buffer for reading GPS strings
 char c;
@@ -40,13 +39,18 @@ uint8_t pps_count = 0;
 uint8_t pps_print = 0;
 int8_t logging[2] = {0, 0}; // if necessary, could consolidate 'sampling' and 'firstfile' into logging by using codes for logging[0] instead of just 0/1
 int8_t sampling = 0;
-uint32_t sample_count = 0;  // distinct from samp_index--used in data writing 
+uint32_t sample_count = 0;  
 uint8_t GPS_count = 0; // number of pps pulses in a GPS-on period, so that we know when to turn off the GPS // 2015/4/1 JFA
 int8_t cons_overruns = 0; // count of consecutive overruns for determining an error
 uint8_t AdcError = 0;
 uint16_t maxWriteTime = 0;
 uint16_t writeStartTime;
+
+// These are written once per switch-on and could be stored on EEPROM if needed to save memory
 int16_t SN = 0;
+GemConfig config; // configuration info
+
+// AVCC is only used in printmeta and can be used as a local variable there
 float AVCC = 3.1; // version-dependent; see setup()
 
 uint8_t FIR_count;
@@ -57,7 +61,7 @@ int16_t FIR_buffer_4[4] = {0, 0, 0, 0};
 int16_t FIR_buffer_5[4] = {0, 0, 0, 0};
 int16_t FIR_buffer_6[4] = {0, 0, 0, 0};
 int16_t ADC_F;
-//uint32_t mmm=0;
+
 uint16_t tsamp[4] = {0, 0, 0, 0};
 int16_t reading;
 int16_t last_sample = 0;
