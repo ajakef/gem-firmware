@@ -78,7 +78,7 @@ void Adafruit_ADS1015::request_Differential_0_1(){
   Wire.endTransmission();
 }
 
-int16_t Adafruit_ADS1015::read_ADC(int8_t *error){
+int16_t Adafruit_ADS1015::read_ADC(uint8_t *error){
   Wire.beginTransmission(m_i2cAddress);
   Wire.write(ADS1015_REG_POINTER_CONVERT);
   Wire.endTransmission();

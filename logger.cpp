@@ -339,12 +339,14 @@ uint8_t parseHex(char c) {
   // from Adafruit_GPS library
     if (c < '0')
       return 0;
-    if (c <= '9')
+    else if (c <= '9')
       return c - '0';
-    if (c < 'A')
+    else if (c < 'A')
        return 0;
-    if (c <= 'F')
+    else if (c <= 'F')
        return (c - 'A')+10;
+    else
+       return 0;   
 }
 
 int16_t SincFilt(int16_t buf1[4], int16_t buf2[4], int16_t buf3[4], int16_t buf4[4], int16_t buf5[4], int16_t buf6[4], int16_t* reading){ // change to pointers?

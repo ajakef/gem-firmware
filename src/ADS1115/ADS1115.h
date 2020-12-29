@@ -92,7 +92,7 @@ protected:
   Adafruit_ADS1015(uint8_t i2cAddress = ADS1015_ADDRESS);
   void begin(void);
   void request_Differential_0_1();
-  int16_t read_ADC(int8_t *error);
+  int16_t read_ADC(uint8_t *error);
   void setGain(adsGain_t gain);
 
  private:
