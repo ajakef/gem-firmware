@@ -120,6 +120,7 @@ int16_t SincFilt(int16_t buf1[4], int16_t buf2[4], int16_t buf3[4], int16_t buf4
 uint8_t parseHex(char c);
 void ReadConfig(SdFile *file, char *buffer, uint8_t *buffidx, GemConfig *config);
 int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx);
+float set_AVCC(uint16_t* SN);
 #endif // ifndef LOGGER_H
 
 

@@ -1,6 +1,7 @@
 #include "logger.h"
 #include <EEPROM.h>
 #include "version.h"
+#include <avr/wdt.h>
 
 void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t* last_sample){
   // print data to the serial connection if needed
@@ -45,6 +46,17 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   fifo->resetMinFree();
 }
 
+float set_AVCC(uint16_t* SN){
+  // If serial number is known and less than 38 (first Gem 0.9), use DEFAULT (unsafe unless known to be v<0.9).
+  // Otherwise, use EXTERNAL (always safe, but analog readings don't work for v<0.9)
+  if(*SN > 0 && *SN < 38){
+    analogReference(DEFAULT);
+    return 3.35;
+  }else{
+    analogReference(EXTERNAL);
+    return 3.1;
+  }
+}
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
   int16_t current_fn = -1;
   int16_t greatest_fn = -1;
@@ -211,8 +223,7 @@ void printRMC(RMC* G, SdFile* file, volatile float *pps_millis){
   if(checkRMC_latlon(G)){
     file->print(F("E,3,"));file->printField(G->lat, ',', 5);file->println(G->lon, 5);
     return; // lat = 0 is a missing value
-  } // lat = 0 is a missing value code and it's also the equator. Bad design, but even if we're on the equator within about a meter, only a fraction of strings will be rejected.
-  //if(G->second != (float)((int)G->second)){
+  } 
   if(checkRMC_secfloat(G)){
     file->print(F("E,4,")); file->println(G->second);
     return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
@@ -267,9 +278,12 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     // get time
     p = strchr(p, ',')+1; 
     // why use atof? why not convert directly to long instead of float?
-    G->hour = ((uint32_t)atof(p)) / 10000; // atof converts the first contiguous run of numbers in a character array to a float. so, the following comma and everything after is ignored.
+    /*G->hour = ((uint32_t)atof(p)) / 10000; // atof converts the first contiguous run of numbers in a character array to a float. so, the following comma and everything after is ignored.
     G->minute = (((uint32_t)atof(p)) % 10000) / 100;
-    G->second = atof(p+4);// - ((float)G->hour)*10000 - ((float)G->minute)*100;
+    */
+    G->hour = (atol(p)) / 10000; // atof converts the first contiguous run of numbers in a character array to a float. so, the following comma and everything after is ignored.
+    G->minute = atol(p+2) / 100;
+    G->second = atof(p+4);// 
 
     //if(G->second != ((float)((int)G->second))){ // if second isn't an int, don't trust it
     if(checkRMC_secfloat(G)){
@@ -286,7 +300,7 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
       failure_code = 4; // GPS fix is neither void nor active: shouldn't happen except with transmission error. ignore.
     }
     
-    // parse latitude
+    // parse latitude: degrees, then decimal minutes
     p = strchr(p, ',')+1;
     strncpy(degreebuff, p, 2);
     p += 2;
@@ -301,17 +315,12 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     p = strchr(p, ',')+1;
     if(p[0] == 'S') G->lat = -G->lat;
     
-    //if(G->lat == 0.0){ // 0.0 is missing value for lat--bad choice by GPS manufacturer
-    //  failure_code = 5; // lat is equal to the missing value. If you're within a few m of the equator, this will sometimes happen spuriously.
-    //}
-
-    // parse longitude
+    // parse longitude: degrees, then decimal minutes
     p = strchr(p, ',')+1;
     strncpy(degreebuff, p, 3);
     p += 3;
     degreebuff[3] = '\0';
-    //float degreef = atof(degreebuff); // 2020-12-28
-    degreef = atof(degreebuff); // 2020-12-28
+    degreef = atof(degreebuff); 
     strncpy(degreebuff, p, 2); // minutes
     p += 3; // skip decimal point
     strncpy(degreebuff + 2, p, 4);
@@ -435,28 +444,14 @@ void ReadConfig(SdFile *file, char *buffer, uint8_t *buffidx, GemConfig *config)
   }else{
     config->serial_output = 0; // default: do not send pressure data over serial
   } 
-  // User doesn't really need control over these things; disable as config options
-  // parse sixth line: data compression
-  //x = ReadConfigLine(file, buffer, buffidx);
-  //if(x == 0){ 
-  //  config->compression = 0; // no compression
-  //}else{
-  //  config->compression = 1; // default: compression mode 1 (omit certain commas, log pressure differences, skip data millisLag, 13-bit millis
-  //}
-  // parse eighth line: file length
-  //x = ReadConfigLine(file, buffer, buffidx) / 10;
-  //if(x > 0 && x < pow(2,8)){ 
-  //  config->file_length = x; // file length in tens of minutes
-  //}else{
-  //  config->file_length = FILE_LENGTH_DEFAULT/10;
-  //}*/
+
 }
+
 int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
   /* procedure: log characters (except whitespace and anything after a #) until \n is found. Then, run the result through strtol.
    *  Leading whitespace is allowed in the line. The first non-digit after a digit or 
    *  non-whitespace, non-digit before the first digit truncates parsing in strtol.
   */
-
   char *c;
   int32_t output;
   // first: reset the buffer
@@ -499,4 +494,20 @@ int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
   Serial.println(buffer);
   Serial.println(output);
   return(output);
+}
+
+// A watchdog interrupt "resets" the Gem when it overflows. Note that this isn't a true watchdog reset,
+// which can't actually be done with the Arduino Pro bootloader (and changing the bootloader is not
+// practical in this project for portability's sake). Use wdt_disable() to turn off this interrupt.
+void begin_WDT(){
+  noInterrupts(); // disable all the interrupts
+  MCUSR = 0; // ensure that the reset vectors are off
+  
+  // Put the watchdog timer in configuration mode. WDE normally means "reset on overflow" but not here (not logical, just what the datasheet says)
+  _WD_CONTROL_REG = (1 << WDCE) | (1 << WDE);
+  
+  // This line must run immediately after the config mode line. WDIE means "interrupt on overflow" and WDP0 etc are the time code.
+  // time code is approx 1 sec * (2**bin(WDP3, WDP2, WDP1, WDP0) - 6). So, 0111 is 2 sec
+  _WD_CONTROL_REG = (1 << WDIE) | (0 << WDP3) | (1 << WDP2) | (1 << WDP1) | (1 << WDP0); 
+  interrupts();  // re-enable interrupts
 }
