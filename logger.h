@@ -22,6 +22,12 @@
 #define ADC_ERROR_THRESHOLD 255
 #define MILLIS_ROLLOVER 8192
 #define FIRST_GPS_CYC_LENGTH 90000 // samples in 15 minutes. The almanac takes 12.5 minutes to load.
+#define FAST_BAUD_RATE 57600
+#if FAST_BAUD_RATE == 57600
+  #define PMTK_SET_BAUD_FAST PMTK_SET_BAUD_57600
+#else
+  #define PMTK_SET_BAUD_FAST PMTK_SET_BAUD_115200
+#endif
 
 #include <Arduino.h>
 #include "src/SdFat/SdFat.h"
@@ -42,6 +48,7 @@
 // From Adafruit GPS library
 #define PMTK_COLD_START "$PMTK103*30" // do not use existing time/location/almanac/ephemeris data. Consider using this on first power-up.
 #define PMTK_SET_NMEA_UPDATE_1HZ  "$PMTK220,1000*1F"
+#define PMTK_SET_BAUD_115200 "$PMTK251,115200*1F" ///< 115200 bps
 #define PMTK_SET_BAUD_57600 "$PMTK251,57600*2C"
 #define PMTK_SET_BAUD_9600 "$PMTK251,9600*17"
 #define PMTK_SET_NMEA_OUTPUT_RMCONLY "$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"// turn on only the second sentence (GPRMC)

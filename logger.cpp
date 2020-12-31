@@ -178,11 +178,11 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
 void GPS_startup(GemConfig* config){
   Serial.begin(9600);
   delay(50);
-  Serial.println(F(PMTK_SET_BAUD_57600));
+  Serial.println(F(PMTK_SET_BAUD_FAST));
   delay(50);
-  Serial.println(F(PMTK_SET_BAUD_57600)); // send it twice in case there's some problem the first time
+  Serial.println(F(PMTK_SET_BAUD_FAST)); // send it twice in case there's some problem the first time
   delay(50);
-  Serial.begin(57600);
+  Serial.begin(FAST_BAUD_RATE);
   delay(50);
   delay(50);
   if(config->gps_mode != 3){ // if GPS is set to "on" or "cycled", turn it on now
