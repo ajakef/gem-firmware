@@ -27,6 +27,9 @@
 #include "src/SdFat/SdFat.h"
 #include "src/NilRTOS/NilFIFO.h"
 #include "src/ADS1115/ADS1115.h"
+#include <avr/wdt.h>
+#include "version.h"
+#include <EEPROM.h>
 
 // Pinout
 #define PPS 2

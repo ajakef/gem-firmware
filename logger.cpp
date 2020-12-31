@@ -1,7 +1,4 @@
 #include "logger.h"
-#include <EEPROM.h>
-#include "version.h"
-#include <avr/wdt.h>
 
 void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t* last_sample){
   // print data to the serial connection if needed
