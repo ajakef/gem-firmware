@@ -6,6 +6,7 @@
 //#define SERIAL_TX_BUFFER_SIZE 64
 //#define SERIAL_RX_BUFFER_SIZE 64
 #define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
+#define FAST_BAUD_RATE 57600 // this is set up to easily switch to 115200, but 115200 doesn't actually work: Gem doesn't receive any good serial data from the GPS.
 
 // Main User-Configurable Options
 #define DT 2500 // microseconds
@@ -22,7 +23,7 @@
 #define ADC_ERROR_THRESHOLD 255
 #define MILLIS_ROLLOVER 8192
 #define FIRST_GPS_CYC_LENGTH 90000 // samples in 15 minutes. The almanac takes 12.5 minutes to load.
-#define FAST_BAUD_RATE 57600
+#define LONG_GPS_CYC_LENGTH 900 // GPS fixes in 15 minutes. The almanac takes 12.5 minutes to load.
 #if FAST_BAUD_RATE == 57600
   #define PMTK_SET_BAUD_FAST PMTK_SET_BAUD_57600
 #else
@@ -115,7 +116,7 @@ bool checkRMC_badtime(RMC* G);
 // Functions declarations:
 void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t *last_sample);
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_flag, float* AVCC);
-void printRMC(RMC* G, SdFile* file, volatile float* pps_millis);;
+void printRMC(RMC* G, SdFile* file, volatile float* pps_millis, uint8_t* long_gps_cyc);
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN);
 void IncrementFilename(char fname[13]);
 void logstatus(int8_t logging[2]);

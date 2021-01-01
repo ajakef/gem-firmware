@@ -205,7 +205,7 @@ bool checkRMC_latlon(RMC* G){return (G->lat == 0) || (G->lat > 90) || (G->lat < 
 bool checkRMC_secfloat(RMC* G) {return (G->second != (float)(int)G->second);}
 bool checkRMC_badtime(RMC* G) {return (G->hour > 23 || G->minute > 59 || G->second > 59 || G->day > 31 || G->month > 12);}
 
-void printRMC(RMC* G, SdFile* file, volatile float *pps_millis){
+void printRMC(RMC* G, SdFile* file, volatile float *pps_millis, uint8_t* long_gps_cyc){
   //if(((uint16_t)millis()-fmod(*pps_millis, pow(2,16))) > 1000){
   if(checkRMC_fresh(pps_millis)){
     file->print(F("E,1,")); file->printField(millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->println((uint16_t)(millis()-fmod(*pps_millis, pow(2, 16))));
@@ -235,6 +235,12 @@ void printRMC(RMC* G, SdFile* file, volatile float *pps_millis){
   file->printField(G->second, ',', 1); // 0 decimal points (s)
   file->printField(G->lat, ',', 5); // 5 decimal points (~1m)
   file->println(G->lon, 5); // 5 decimal points (~1m)
+
+  if((G->day == 1) && (G->hour == 0) && // If it's the first hour of the first day of the month
+        ((G->month == 1) || (G->month == 4) || (G->month == 7) || (G->month == 10)) && // on a month when leap-seconds can occur
+        (*long_gps_cyc == 0)){ // and the long_gps_cyc flag is set to its usual value 0
+    *long_gps_cyc = 1; // then set it to mean that the current cycle should be long
+  }
 }
 
 //////////////////////////////
