@@ -13,13 +13,19 @@ void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig 
   file->printField(p->time % MILLIS_ROLLOVER, ',');
   file->println(p->pressure - *last_sample);
   *last_sample = p->pressure;
+  // Test to see how long samples are waiting in the FIFO. It should normally be a tens of ms. If it is much more than that, we 
+  // can take it as an indicator of poor data writing performance and trigger an error. Note that this is more of a time-integrated
+  // measure than just the instantaneous number of overruns.
+  if((int32_t)((uint16_t)gem_millis() - (int32_t)p->time) > 2000){
+    error(5); // slow SD writing
+  }
 }
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_on, float* AVCC){
   uint16_t reading;
   // to reduce adc error, preliminary throwaway reading is taken before final reading for each pin. This gives the pin time to settle after being connected to ADC.
   analogRead(BATVOLT); 
   file->print(F("M,"));
-  file->printField((uint16_t)millis() % MILLIS_ROLLOVER, ',');
+  file->printField((uint16_t)gem_millis() % MILLIS_ROLLOVER, ',');
   reading = analogRead(BATVOLT);
   analogRead(TEMP);
   file->printField(((float)reading)/1023.0 * *AVCC * 5.54545, ',', 2); // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
@@ -143,7 +149,7 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
 
 }
 
-void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint8_t* GPS_count){
+void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint16_t* GPS_count){
   // codes: 1 (acq, GPS off), 2 (acq, GPS searching), 3 (acq, GPS fix)
   if((*sample_count % 100) == 0){
     digitalWrite(LED, HIGH);
@@ -186,7 +192,7 @@ void GPS_startup(GemConfig* config){
   delay(50);
   delay(50);
   if(config->gps_mode != 3){ // if GPS is set to "on" or "cycled", turn it on now
-    // test using a cold start here, in order to force almanac refresh
+    // consider using a cold start here, in order to force almanac refresh
     Serial.println(F(PMTK_AWAKE)); // command to wake up GPS
     delay(50);
     Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCONLY));
@@ -198,7 +204,7 @@ void GPS_startup(GemConfig* config){
 }
 
 // Use these functions for RMC checks to ensure they're applied consistently. Consider making these methods of G.
-bool checkRMC_fresh(volatile float *pps_millis){ return (((uint16_t)millis()-fmod(*pps_millis, pow(2,16))) > 1000); }
+bool checkRMC_fresh(volatile float *pps_millis){ return (((uint16_t)gem_millis()-fmod(*pps_millis, pow(2,16))) > 1000); }
 bool checkRMC_yearmissing(RMC* G){ return G->year == 0;}
 bool checkRMC_yearwrong(RMC* G){ return G->year > 40;}
 bool checkRMC_latlon(RMC* G){return (G->lat == 0) || (G->lat > 90) || (G->lat < -90) || (G->lon == 0) || (G->lon > 180) || (G->lon < -180);}
@@ -206,9 +212,9 @@ bool checkRMC_secfloat(RMC* G) {return (G->second != (float)(int)G->second);}
 bool checkRMC_badtime(RMC* G) {return (G->hour > 23 || G->minute > 59 || G->second > 59 || G->day > 31 || G->month > 12);}
 
 void printRMC(RMC* G, SdFile* file, volatile float *pps_millis, uint8_t* long_gps_cyc){
-  //if(((uint16_t)millis()-fmod(*pps_millis, pow(2,16))) > 1000){
+  //if(((uint16_t)gem_millis()-fmod(*pps_millis, pow(2,16))) > 1000){
   if(checkRMC_fresh(pps_millis)){
-    file->print(F("E,1,")); file->printField(millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->println((uint16_t)(millis()-fmod(*pps_millis, pow(2, 16))));
+    file->print(F("E,1,")); file->printField(gem_millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->println((uint16_t)(gem_millis()-fmod(*pps_millis, pow(2, 16))));
     return; // pps_millis probably matches a different sample if this is the case
   }
   //if(G->year == 0){ // year code 0 is 2000
@@ -226,7 +232,14 @@ void printRMC(RMC* G, SdFile* file, volatile float *pps_millis, uint8_t* long_gp
     return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
   }
   file->print("G,");
-  file->printField(fmod(*pps_millis, MILLIS_ROLLOVER), ',');file->printField(G->millisParsed-fmod(*pps_millis, pow(2,16)), ',');
+  file->printField(fmod(*pps_millis, MILLIS_ROLLOVER), ',');
+  file->printField(G->millisParsed-fmod(*pps_millis, pow(2,16)), ',');
+  if(gem_millis() % 5000 < 1000){
+  Serial.print(G->millisParsed); Serial.print(','); 
+  Serial.print(*pps_millis);Serial.print(','); 
+  Serial.print(fmod(*pps_millis, pow(2,16)));Serial.print(','); 
+  Serial.println(G->millisParsed-fmod(*pps_millis, pow(2,16)), ',');
+  }
   file->printField(G->year + 2000, ',');
   file->printField(G->month, ',');
   file->printField(G->day, ',');
@@ -275,7 +288,7 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
   }
   char degreebuff[10]; // can this be dropped?
   if(strstr(nmea, "$GPRMC")) {
-    G->millisParsed = millis();
+    G->millisParsed = gem_millis();
    // found RMC
     char *p = nmea; // p is an address that increments as we advance through nmea
     // get time
@@ -510,7 +523,7 @@ void begin_WDT(){
   _WD_CONTROL_REG = (1 << WDCE) | (1 << WDE);
   
   // This line must run immediately after the config mode line. WDIE means "interrupt on overflow" and WDP0 etc are the time code.
-  // time code is approx 1 sec * (2**bin(WDP3, WDP2, WDP1, WDP0) - 6). So, 0111 is 2 sec
-  _WD_CONTROL_REG = (1 << WDIE) | (0 << WDP3) | (1 << WDP2) | (1 << WDP1) | (1 << WDP0); 
+  // time code is approx 1 sec * (2**bin(WDP3, WDP2, WDP1, WDP0) - 6). So, 1000 is 4 sec per loop.
+  _WD_CONTROL_REG = (1 << WDIE) | (1 << WDP3) | (0 << WDP2) | (0 << WDP1) | (0 << WDP0); 
   interrupts();  // re-enable interrupts
 }
