@@ -1,36 +1,39 @@
-// use LOGGER_H to ensure that declarations are not run twice
+// use LOGGER_H to ensure that definitions are not run twice. This must be the first line run in logger.h.
 #ifndef LOGGER_H
 #define LOGGER_H
 
-// setting the SERIAL buffer sizes here doesn't seem to do anything, probably due to conflict with dependencies
-//#define SERIAL_TX_BUFFER_SIZE 64
-//#define SERIAL_RX_BUFFER_SIZE 64
-#define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
-#define FAST_BAUD_RATE 57600 // this is set up to easily switch to 115200, but 115200 doesn't actually work: Gem doesn't receive any good serial data from the GPS.
-#define gem_millis() round(micros()/1024)
-
 // Main User-Configurable Options
 #define DT 2500 // microseconds
-#define BUFFERLENGTH 80 // GPS buffer length (characters, bytes)
-#define GPS_QUOTA 20 // number of good GPS samples that must be logged before GPS is put on standby
-#define GPS_QUOTA_DEFAULT 20
+#define GPS_QUOTA_DEFAULT 20 // number of good GPS samples that must be logged before GPS is put on standby
 #define GPS_CYC 90000 // interval in samples between GPS turning on and logging until quota is reached) 15 minutes
 #define GPS_CYC_DEFAULT 15 // minutes, for the config
 #define GPS_RESET_THRESHOLD 20 // reset the GPS if it records 20 PPS pulses without a good NMEA string
 #define META_CYC 100 // interval (in samples) between metadata reports
-#define FIFO_SIZE_BYTES 300  // size of FIFO: must be long enough to make sure it doesn't fill, but short enough to fit within available SRAM. 
-// If program crashes mysteriously after adding new code, it could be a memory error: try decreasing FIFO_SIZE_BYTES.
+#define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
+#define LONG_GPS_CYC_LENGTH 900 // GPS fixes in 15 minutes. The almanac takes 12.5 minutes to load, so this should be adequate.
+
+#define BUFFERLENGTH 80 // GPS buffer length (characters, bytes)
+#define ADC_ERROR_THRESHOLD 255 // raise error 3 if the ADC fails this many times in a row
+#define MILLIS_ROLLOVER 8192 // the milliseconds written to the data file roll over this often (reduces file size)
+
+/*FIFO is the buffer where samples go between the high-priority digitization/filter loop and the low-priority SD write.
+Each sample takes up 4 bytes. Normally, the FIFO only contains a few samples, but it occasionally uses many more. If it
+fills, it triggers an overrun, and subsequent samples are lost until the FIFO has space again. So, the FIFO must be long 
+enough to make sure it doesn't fill, but short enough to fit within available SRAM. If program crashes mysteriously after
+adding new code, it could be a memory error: try decreasing FIFO_SIZE_BYTES.*/
+#define FIFO_SIZE_BYTES 300  
 #define FIFO_DIM FIFO_SIZE_BYTES/4
-#define ADC_ERROR_THRESHOLD 255
-#define MILLIS_ROLLOVER 8192
-#define FIRST_GPS_CYC_LENGTH 90000 // samples in 15 minutes. The almanac takes 12.5 minutes to load.
-#define LONG_GPS_CYC_LENGTH 900 // GPS fixes in 15 minutes. The almanac takes 12.5 minutes to load.
+
+// Serial data rate (for communicating with GPS): use 57600
+// this is set up to easily switch to 115200, but the Gem doesn't receive any good serial data from the GPS at 115200
+#define FAST_BAUD_RATE 57600 
 #if FAST_BAUD_RATE == 57600
   #define PMTK_SET_BAUD_FAST PMTK_SET_BAUD_57600
 #else
   #define PMTK_SET_BAUD_FAST PMTK_SET_BAUD_115200
 #endif
 
+// include dependencies
 #include <Arduino.h>
 #include "src/SdFat/SdFat.h"
 #include "src/NilRTOS/NilFIFO.h"
@@ -39,15 +42,23 @@
 #include "version.h"
 #include <EEPROM.h>
 
-// Pinout
-#define PPS 2
-#define LED 4
-#define ERRORLED 5
-#define SWITCH 6
-#define TEMP 0 // analog
-#define BATVOLT 1 // analog
+// Digital Pinout
+// D0, D1: Serial port for communicating with GPS and computer
+#define PPS 2 // pulse-per-second from GPS (D2 supports interrupts)
+// D3: unused
+#define LED 4 // ACQ LED, blue
+#define ERRORLED 5 // ERR LED, red
+#define SWITCH 6 // Acquisition start/stop switch
+// D7, D8, D9: unused
+// D10-D13: SD card interface (SPI)
 
-// From Adafruit GPS library
+// Analog Pinout
+#define TEMP 0 // thermometer
+#define BATVOLT 1 // battery voltage
+// A2, A3: user can connect to miscellaneous analog sensors
+// A4, A5: Analog-Digital Converter interface (I2C)
+
+// GPS Commands (from Adafruit GPS library)
 #define PMTK_COLD_START "$PMTK103*30" // do not use existing time/location/almanac/ephemeris data. Consider using this on first power-up.
 #define PMTK_SET_NMEA_UPDATE_1HZ  "$PMTK220,1000*1F"
 #define PMTK_SET_BAUD_115200 "$PMTK251,115200*1F" ///< 115200 bps
@@ -76,24 +87,6 @@
 #define CB 5341L
 #define CC 5709L
 
-// Type for configuration info
-struct GemConfig {
-  uint8_t gps_mode; // 1 cycled, 2 on, 3 off
-  uint8_t gps_cycle; // interval (minutes)
-  uint8_t gps_quota; // number of strings
-  uint8_t adc_range; // 0 for +/-0.256 V (e.g., infrasound--default), 1 for +/-0.512 V
-  uint8_t led_shutoff; // 0 (never turn off), 1-255 (number of minutes to leave on)
-  uint8_t serial_output; // 0 to send all data to SD only; 1 to send all data to SD and pressure data only to Serial too
-  //uint8_t compression; // 0 for no compression, 1 for pressure differencing, comma-skipping, and 13-bit millis
-  //uint8_t file_length; // 0 for +/-0.256 V (e.g., infrasound--default), 1 for +/-2.048 V
-};
-
-// Type for a data record.
-struct Record_t {
-  int16_t pressure;
-  uint16_t time;
-};
-
 // Type for RMC info
 struct RMC {
   int8_t hour;
@@ -107,14 +100,23 @@ struct RMC {
   uint16_t millisParsed;
 };
 
-bool checkRMC_fresh(volatile float *pps_millis);
-bool checkRMC_yearmissing(RMC* G);
-bool checkRMC_yearwrong(RMC* G);
-bool checkRMC_latlon(RMC* G);
-bool checkRMC_secfloat(RMC* G);
-bool checkRMC_badtime(RMC* G);
+// Type for configuration info
+struct GemConfig {
+  uint8_t gps_mode; // 1 cycled, 2 on, 3 off
+  uint8_t gps_cycle; // interval (minutes)
+  uint8_t gps_quota; // number of strings
+  uint8_t adc_range; // 0 for +/-0.256 V (e.g., infrasound--default), 1 for +/-0.512 V
+  uint8_t led_shutoff; // 0 (never turn off), 1-255 (number of minutes to leave on)
+  uint8_t serial_output; // 0 to send all data to SD only; 1 to send all data to SD and pressure data only to Serial too
+};
 
-// Functions declarations:
+// Type for a data record.
+struct Record_t {
+  int16_t pressure;
+  uint16_t time;
+};
+
+// Function declarations:
 void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t *last_sample);
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_flag, float* AVCC);
 void printRMC(RMC* G, SdFile* file, volatile float* pps_millis, uint8_t* long_gps_cyc);
@@ -134,9 +136,19 @@ uint8_t parseHex(char c);
 void ReadConfig(SdFile *file, char *buffer, uint8_t *buffidx, GemConfig *config);
 int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx);
 float set_AVCC(uint16_t* SN);
-#endif // ifndef LOGGER_H
 
+// This approximate "millisecond" function is used for compatibility with the micros() used for the pps; they roll over at the same time.
+#define gem_millis() round(micros()/1024.0) 
 
+// miscellaneous GPS checks, which may be redefined as methods of RMC class in the future
+bool checkRMC_fresh(volatile float *pps_millis);
+bool checkRMC_yearmissing(RMC* G);
+bool checkRMC_yearwrong(RMC* G);
+bool checkRMC_latlon(RMC* G);
+bool checkRMC_secfloat(RMC* G);
+bool checkRMC_badtime(RMC* G);
+
+#endif // ifndef LOGGER_H; this must be after all the non-commented lines in logger.h
 
 // Miscellaneous GPS instructions that are not used here but could potentially be implemented by a user (thanks, Adafruit!)
 

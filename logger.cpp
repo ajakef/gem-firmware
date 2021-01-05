@@ -13,7 +13,7 @@ void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig 
   file->printField(p->time % MILLIS_ROLLOVER, ',');
   file->println(p->pressure - *last_sample);
   *last_sample = p->pressure;
-  // Test to see how long samples are waiting in the FIFO. It should normally be a tens of ms. If it is much more than that, we 
+  // Test to see how long samples are waiting in the FIFO. It should normally be tens of ms. If it is much more than that, we 
   // can take it as an indicator of poor data writing performance and trigger an error. Note that this is more of a time-integrated
   // measure than just the instantaneous number of overruns.
   if((int32_t)((uint16_t)gem_millis() - (int32_t)p->time) > 2000){
@@ -37,7 +37,8 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   file->printField(((float)reading)* *AVCC/1023.0, ',', 3); // V
   reading = analogRead(3);
   file->printField(((float)reading)* *AVCC/1023.0, ',', 3); // V
-  
+
+  // print other data on memory and GPS use
   file->printField(*maxWriteTime, ',');
   file->printField(fifo->minimumFreeCount(), ',');
   file->printField(FIFO_DIM - fifo->minimumFreeCount(), ','); 
@@ -60,6 +61,7 @@ float set_AVCC(uint16_t* SN){
     return 3.1;
   }
 }
+
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
   int16_t current_fn = -1;
   int16_t greatest_fn = -1;
@@ -84,7 +86,6 @@ void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
   fname[5] = '0' + greatest_fn/100 % 10;
   fname[6] = '0' + greatest_fn/10 % 10;
   fname[7] = '0' + greatest_fn % 10;
-  //fname[8] = '.'; fname[9] = 'T'; fname[10] = 'X'; fname[11] = 'T';
   fname[8] = '.'; fname[9] = '0'+((*SN/100) % 10); fname[10] = '0'+((*SN/10) % 10); fname[11] = '0'+(*SN % 10); // set the serial number as the filename extension
   Serial.println(greatest_fn);
   Serial.println(fname);
@@ -93,6 +94,8 @@ void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN){
   file->open("FILE0000.TXT", O_CREAT);
   file->close();
 }
+
+// function to add 1 to the current file number
 void IncrementFilename(char fname[13]){
   uint16_t i = (1 + 1000*(fname[4]-'0') + 100*(fname[5]-'0') + 10*(fname[6]-'0') + (fname[7]-'0')) % 10000; 
   fname[4] = i/1000 + '0';
@@ -166,7 +169,6 @@ void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint16_t* GPS_count){
   }
 }
 void EndFile(SdFile* file){
-  // no footer to print anymore.  maybe not necessary?
   file->close();
 }
 void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint32_t* sample_count){
@@ -212,17 +214,14 @@ bool checkRMC_secfloat(RMC* G) {return (G->second != (float)(int)G->second);}
 bool checkRMC_badtime(RMC* G) {return (G->hour > 23 || G->minute > 59 || G->second > 59 || G->day > 31 || G->month > 12);}
 
 void printRMC(RMC* G, SdFile* file, volatile float *pps_millis, uint8_t* long_gps_cyc){
-  //if(((uint16_t)gem_millis()-fmod(*pps_millis, pow(2,16))) > 1000){
   if(checkRMC_fresh(pps_millis)){
     file->print(F("E,1,")); file->printField(gem_millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->println((uint16_t)(gem_millis()-fmod(*pps_millis, pow(2, 16))));
     return; // pps_millis probably matches a different sample if this is the case
   }
-  //if(G->year == 0){ // year code 0 is 2000
   if(checkRMC_yearmissing(G) || checkRMC_yearwrong(G)){
     file->print(F("E,2,")); file->println(G->year + 2000);
     return; // year=2000 (code 0) is a missing value
   }
-  //if(G->lat == 0.0){
   if(checkRMC_latlon(G)){
     file->print(F("E,3,"));file->printField(G->lat, ',', 5);file->println(G->lon, 5);
     return; // lat = 0 is a missing value
@@ -293,10 +292,6 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     char *p = nmea; // p is an address that increments as we advance through nmea
     // get time
     p = strchr(p, ',')+1; 
-    // why use atof? why not convert directly to long instead of float?
-    /*G->hour = ((uint32_t)atof(p)) / 10000; // atof converts the first contiguous run of numbers in a character array to a float. so, the following comma and everything after is ignored.
-    G->minute = (((uint32_t)atof(p)) % 10000) / 100;
-    */
     G->hour = (atol(p)) / 10000; // atof converts the first contiguous run of numbers in a character array to a float. so, the following comma and everything after is ignored.
     G->minute = atol(p+2) / 100;
     G->second = atof(p+4);// 
@@ -341,7 +336,6 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     p += 3; // skip decimal point
     strncpy(degreebuff + 2, p, 4);
     degreebuff[6] = '\0';
-    //float minutesf = atof(degreebuff)/10000; // 2020-12-28
     minutesf = atof(degreebuff)/10000; // 2020-12-28
     G->lon = degreef + minutesf/60;
     p = strchr(p, ',')+1;
@@ -359,11 +353,9 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     G->day = (uint32_t)atof(p) / 10000;
     G->month = ((uint32_t)atof(p) % 10000) / 100;
     G->year = ((uint32_t)atof(p) % 100);
-    //if(G->year == 0){ // 0 is missing value for year
     if(checkRMC_yearmissing(G)){
       failure_code = 6; // 
     }
-    //if(G->year > 40){ // bad strings often have years far in the future (here, 2040)
     if(checkRMC_yearwrong(G)){
       failure_code = 7; // year is improbably far in the future
     }
@@ -476,7 +468,6 @@ int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
   while(*buffidx == 0){ // keep reading new lines until we read at least one digit before a comment
     while(file->available()){  // main loop, starting at the beginning of the line
       *c = file->read();
-      //Serial.print(*buffidx); Serial.println(*c);
       if(*c == ' ' || *c == '\r' || *c == '\t') continue; // ignore spaces, CR, tabs: this is necessary to avoid parsing a line that just has whitespace followed by # 
       
       // if we hit the comment character '#', skip ahead to the next '\n'
@@ -486,7 +477,6 @@ int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
           if(*c == '\n') break; // stop advancing once we hit '\n'
         }
       } // end of comment-processing if statement
- 
       
       // if we've hit a '\n', regardless of whether it's after a number, in a comment, or neither, stop advancing
       if(*c == '\n') break; 
