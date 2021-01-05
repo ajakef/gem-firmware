@@ -1,3 +1,6 @@
+## Installing the Arduino IDE
+First, download and install the Arduino IDE from [here](https://www.arduino.cc/en/software#download)
+
 ## Downloading the firmware
 Open the Arduino IDE and open File > Preferences, and find the folder shown in the "Sketchbook location" field. Then, download the firmware from the Github site by clicking the green "Code" button and the "Download ZIP". Unzip the file, rename the resulting folder to "gem-firmware", and move it to the sketchbook folder. 
 
