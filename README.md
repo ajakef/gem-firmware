@@ -2,7 +2,7 @@
 Open the Arduino IDE and open File > Preferences, and find the folder shown in the "Sketchbook location" field. Then, download the firmware from the Github site by clicking the green "Code" button and the "Download ZIP". Unzip the file, rename the resulting folder to "gem-firmware", and move it to the sketchbook folder. 
 
 ## Compiling the firmware
-Once you've moved and renamed the gem-firmware folder, you should be able to open it. Restart the Arduino IDE, then open the Gem firmware with File > Sketchbook > Gem.
+Once you've moved and renamed the gem-firmware folder, you should be able to open it. Restart the Arduino IDE, then open the Gem firmware with File > Sketchbook > gem-firmware.
 
 Then, select the correct board to compile for:
 * Tools > Board > Arduino AVR Boards > Arduino Pro or Pro Mini
