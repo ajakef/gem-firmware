@@ -17,6 +17,13 @@ Finally, click the check-mark compile button in the top left corner.
 
 Notice that if you use the "Compiler Warnings: ALL" setting, it will show a lot of warnings. They are nearly all (if not actually all) associated with the dependencies and don't need to be worried about.
 
+## Obtaining a programming adapter
+To connect to the Gem, you need a 3.3-V USB-FTDI adapter with the pinout GND-CTS-Vcc-TX-RX-RTS. If your adapter has "DTR" in place of "RTS", that's fine. Both the power and signal voltages MUST be set to 3.3 V to avoid damaging the Gem. Before purchasing an adapter, please confirm that it is shaped correctly so that it's easy to plug in to the Gem's 6-pin header on the left side, with a pinout that matches the Gem.
+
+Such adapters can be found at many online stores. They typically cost under USD 20 and often require soldering a plastic header to the adapter circuit board (a beginner-friendly job), and may require cutting a trace and soldering two pads to set the voltage to 3.3V.
+
+Two good examples are [here](https://www.adafruit.com/product/284) (must bend the plastic header to be perpendicular to the board, and set the power voltage to 3.3V) and [here](https://www.sparkfun.com/products/9873).
+
 ## Installing the firmware to a Gem
 Align your FTDI programmer with the Gem's six-pin header just below the micro-SD card. The "GND" label on the programmer should line up with "GND" on the Gem board, and the "RST" or "DTR" label on the programmer should line up with the "RST" label on the Gem board.
 
