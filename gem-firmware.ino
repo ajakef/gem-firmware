@@ -164,7 +164,7 @@ void setup() {
   Serial.print(F("Gem Serial Number: "));
   Serial.println(SN);
 
-  Serial.println(F("To change serial number to 'XXX', enter 'SN:XXX'"));
+  //Serial.println(F("To change serial number to 'XXX', enter 'SN:XXX'"));
   Serial.println(F("To stream ascii data by Serial (no GPS), enter 'lab'"));
   Serial.println(F("To stream binary data by Serial (no GPS), enter 'bin'"));
   delay(200);
@@ -269,11 +269,11 @@ void loop() {
       config.serial_output = 0; // do not send pressure data over serial
     }
   }
-  Serial.println(F("Configuration:"));
-  Serial.print(F("GPS Mode (1-Cycled, 2-On, 3-Off): ")); Serial.println(config.gps_mode);
-  Serial.print(F("GPS Cycle Duration (min.): ")); Serial.println(config.gps_cycle);
+  Serial.println(F("Config:"));
+  Serial.print(F("GPS Mode (1-Cyc, 2-On, 3-Off): ")); Serial.println(config.gps_mode);
+  Serial.print(F("GPS Cyc Dur (min.): ")); Serial.println(config.gps_cycle);
   Serial.print(F("GPS Quota (Fixes): ")); Serial.println(config.gps_quota);
-  Serial.print(F("LED Shutoff (minutes): ")); Serial.println(config.led_shutoff);
+  Serial.print(F("LED Stop (minutes): ")); Serial.println(config.led_shutoff);
   Serial.print(F("Serial Output (0-off, 1-on): ")); Serial.println(config.serial_output);
   Serial.print(F("ADC Range: ")); Serial.println(config.adc_range);
 
@@ -295,7 +295,8 @@ void loop() {
 
   // Turn the GPS off if needed
   if(config.gps_mode == 3){
-    Serial.println(F(PMTK_STANDBY));
+    //Serial.println(F(PMTK_STANDBY));
+    GPS_standby();
   }
 
   begin_WDT(); // Start the watchdog timer (does a soft reset if the code hangs/crashes)
@@ -307,7 +308,7 @@ void loop() {
     // it search for a fix immediately, saving time.
     while(GPS_on && (Serial.available() > 0)){ 
       if(pps_print){
-        file.print(F("P,")); file.println(fmod(pps_millis,MILLIS_ROLLOVER));
+        file.print(F("P,")); file.println(fmod(pps_millis, MILLIS_ROLLOVER));
         pps_print = 0;
         if(config.led_shutoff == 0 || (firstfile == 1 && (sample_count/6000) < config.led_shutoff)){
           digitalWrite(ERRORLED, HIGH); // blink red when the PPS arrives
@@ -376,7 +377,8 @@ void loop() {
     // Turn on GPS at 1000th sample in cycle (1000 to reduce bottleneck at file beginning).
     if(config.gps_mode != 3 && (sample_count % (config.gps_cycle * 60L * 100L)) == 1000){    // config.gps_cycle is in minutes. Note that if this is 0, anything % 0 is undefined, so need to make sure it's >0
       delay(10);
-      Serial.println(F(PMTK_AWAKE));
+      //Serial.println(F(PMTK_AWAKE));
+      GPS_awake();
       GPS_on = 1;
     }
     
@@ -386,7 +388,8 @@ void loop() {
     */
     if(config.gps_mode != 2 && (((long_gps_cyc != 1) && (GPS_count >= config.gps_quota)) || // normal cycles
                                 ((long_gps_cyc == 1) && (GPS_count >= LONG_GPS_CYC_LENGTH)))){ // long cycles 
-      Serial.println(F(PMTK_STANDBY));
+      //Serial.println(F(PMTK_STANDBY));
+      GPS_standby();
       GPS_count = 0;
       pps_count = 0;
       GPS_on = 0;
