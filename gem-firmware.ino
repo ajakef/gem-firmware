@@ -382,6 +382,11 @@ void loop() {
       GPS_on = 1;
     }
     
+    // collect a few seconds of GGA data (should be written as R lines
+    if(config.gps_mode != 2 && (long_gps_cyc == 1) && (GPS_count >= (LONG_GPS_CYC_LENGTH - 60))){
+      Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCGGA));
+    }
+
     /*  Check to see if enough GPS strings have been collected this cycle, and put the GPS on standby if yes.
      *  The threshold for turning off the GPS depends on whether we are in a "long cycle" (intended to fully
      *  refresh the GPS almanac, to catch leap seconds early).
