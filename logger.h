@@ -13,7 +13,7 @@
 #define LONG_GPS_CYC_LENGTH 900 // GPS fixes in 15 minutes. The almanac takes 12.5 minutes to load, so this should be adequate.
 
 #define BUFFERLENGTH 80 // GPS buffer length (characters, bytes)
-#define ADC_ERROR_THRESHOLD 255 // raise error 3 if the ADC fails this many times in a row
+#define ADC_ERROR_THRESHOLD 100 // raise error 3 if the ADC fails this many times in a row (uint8_t)
 #define MILLIS_ROLLOVER 8192 // the milliseconds written to the data file roll over this often (reduces file size)
 
 /*FIFO is the buffer where samples go between the high-priority digitization/filter loop and the low-priority SD write.
@@ -64,10 +64,8 @@ adding new code, it could be a memory error: try decreasing FIFO_SIZE_BYTES.*/
 #define PMTK_SET_BAUD_115200 "$PMTK251,115200*1F" ///< 115200 bps
 #define PMTK_SET_BAUD_57600 "$PMTK251,57600*2C"
 #define PMTK_SET_BAUD_9600 "$PMTK251,9600*17"
-#define PMTK_SET_NMEA_OUTPUT_RMCONLY "$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"// turn on only the second sentence (GPRMC)
-#define PMTK_SET_NMEA_OUTPUT_RMCGGA "$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28"// turn on GPRMC and GGA
-#define PMTK_SET_NMEA_OUTPUT_ALLDATA "$PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28"// turn on ALL THE DATA
-#define PMTK_SET_NMEA_OUTPUT_OFF "$PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28"// turn off output
+#define PMTK_SET_NMEA_OUTPUT_RMCONLY "$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"// turn on GPRMC only
+#define PMTK_SET_NMEA_OUTPUT_GGAONLY "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29" // turn on GPGGA only
 #define PMTK_STANDBY "$PMTK161,0*28"// standby command & boot successful message
 #define PMTK_AWAKE "$PMTK010,002*2D"
 #define PMTK_FACTORY_RESET "$PMTK104*37"
@@ -174,3 +172,9 @@ bool checkRMC_badtime(RMC* G);
 //#define PGCMD_NOANTENNA "$PGCMD,33,0*6D"
 //#define PMTK_ENABLE_SBAS "$PMTK313,1*2E" // "satellite-based augmentation system". Systems are available for several regions/continents
 //#define PMTK_ENABLE_WAAS "$PMTK301,2*2E"
+//#define PMTK_SET_NMEA_OUTPUT_VTGONLY "$PMTK314,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29" 
+//#define PMTK_SET_NMEA_OUTPUT_GSAONLY "$PMTK314,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29" 
+//#define PMTK_SET_NMEA_OUTPUT_GSVONLY "$PMTK314,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0*29"
+//#define PMTK_SET_NMEA_OUTPUT_RMCGGA "$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28"// turn on GPRMC and GGA
+//#define PMTK_SET_NMEA_OUTPUT_ALLDATA "$PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28"// turn on ALL THE DATA
+//#define PMTK_SET_NMEA_OUTPUT_OFF "$PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28"// turn off output

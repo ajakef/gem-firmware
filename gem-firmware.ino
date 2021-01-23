@@ -195,7 +195,7 @@ void loop() {
   AdcError = 0;
   maxWriteTime = 0;
   // wait for ACQ switch to be turned on. 
-  while(!logging[0]){ // wait here until switch is turned on
+  while(!logging[0] && (config.serial_output == 0)){ // wait here until switch is turned on
     logstatus(logging);
 
     // Meanwhile, check to see if user has supplied new serial number via Serial connection.
@@ -301,12 +301,12 @@ void loop() {
 
   begin_WDT(); // Start the watchdog timer (does a soft reset if the code hangs/crashes)
   
-  while(logging[0]){ // loop until the logging switch is turned off
+  while(logging[0] || (config.serial_output != 0)){ // loop until the logging switch is turned off
 
     // First, check for new text from GPS. When logging first begins, the GPS is on, but GPS_on is false. 
     // This keeps the logger from parsing the GPS string during the start-file bottleneck, but lets
     // it search for a fix immediately, saving time.
-    while(GPS_on && (Serial.available() > 0)){ 
+    while((GPS_on > 0) && (Serial.available() > 0)){ 
       if(pps_print){
         file.print(F("P,")); file.println(fmod(pps_millis, MILLIS_ROLLOVER));
         pps_print = 0;
@@ -382,18 +382,22 @@ void loop() {
       GPS_on = 1;
     }
     
-    // collect a few seconds of GGA data (should be written as R lines
-    if(config.gps_mode != 2 && (long_gps_cyc == 1) && (GPS_count >= (LONG_GPS_CYC_LENGTH - 60))){
-      Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCGGA));
-    }
+ 
 
-    /*  Check to see if enough GPS strings have been collected this cycle, and put the GPS on standby if yes.
-     *  The threshold for turning off the GPS depends on whether we are in a "long cycle" (intended to fully
+    /*  Check to see if enough GPS strings have been collected this cycle, and switch to GGA mode if yes.
+     *  The threshold for switching to GGA mode depends on whether we are in a "long cycle" (intended to fully
      *  refresh the GPS almanac, to catch leap seconds early).
     */
-    if(config.gps_mode != 2 && (((long_gps_cyc != 1) && (GPS_count >= config.gps_quota)) || // normal cycles
-                                ((long_gps_cyc == 1) && (GPS_count >= LONG_GPS_CYC_LENGTH)))){ // long cycles 
-      //Serial.println(F(PMTK_STANDBY));
+    if(GPS_on == 1 && config.gps_mode == 1 && // check that the GPS is on and we're in cycled mode
+            (((long_gps_cyc != 1) && (GPS_count >= config.gps_quota)) || // normal cycles
+            ((long_gps_cyc == 1) && (GPS_count >= LONG_GPS_CYC_LENGTH)))){ // long cycles 
+      Serial.println(F(PMTK_SET_NMEA_OUTPUT_GGAONLY));
+      delay(10);
+      GPS_on = 2;
+    }                                
+    
+    // If we're in GGA mode, check to see if it's time to turn the GPS off
+    if(GPS_on == 2 && config.gps_mode == 1 && (pps_count - GPS_count) > 5){
       GPS_standby();
       GPS_count = 0;
       pps_count = 0;

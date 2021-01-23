@@ -158,9 +158,9 @@ void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint16_t* GPS_count){
     digitalWrite(LED, HIGH);
   }else if((*sample_count % 100) == 2){
     digitalWrite(LED, LOW);
-  }else if(((*sample_count % 100) == 20) && (*GPS_on == 1)){ // GPS on
+  }else if(((*sample_count % 100) == 20) && (*GPS_on > 0)){ // GPS on
     digitalWrite(LED, HIGH);
-  }else if(((*sample_count % 100) == 22) && (*GPS_on == 1)){ // GPS on
+  }else if(((*sample_count % 100) == 22) && (*GPS_on > 0)){ // GPS on
     digitalWrite(LED, LOW);
   }else if(((*sample_count % 100) == 40) && (*GPS_count > 0)){ // GPS on and strings logged
     digitalWrite(LED, HIGH);
