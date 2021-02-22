@@ -179,7 +179,6 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
   delay(100);
   digitalWrite(LED, LOW);
   digitalWrite(ERRORLED, LOW);
-  //Serial.println(F(PMTK_STANDBY));
   GPS_standby();
 }
 
@@ -191,10 +190,12 @@ void GPS_standby(){
   }
 }
 void GPS_awake(){
-  Serial.println(F(PMTK_AWAKE)); 
-  delay(50);
+  for(uint8_t i = 0; i < 2; i++){
+    Serial.println(F(PMTK_AWAKE)); 
+    delay(50);
+  }
   Serial.println(F(PMTK_SET_NMEA_OUTPUT_RMCONLY));
-  delay(50);
+  delay(20);
   Serial.println(F(PMTK_SET_NMEA_UPDATE_1HZ));
   delay(20);
 }
@@ -209,17 +210,12 @@ void GPS_startup(GemConfig* config){
     Serial.println(F(PMTK_SET_BAUD_FAST));
     delay(50);
   }
-  //Serial.println(F(PMTK_SET_BAUD_FAST)); // send it twice in case there's some problem the first time
-  //delay(50);
   Serial.begin(FAST_BAUD_RATE);
   delay(100);
-  //delay(50);
   if(config->gps_mode != 3){ // if GPS is set to "on" or "cycled", turn it on now
     // consider using a cold start here, in order to force almanac refresh
-    //Serial.println(F(PMTK_AWAKE)); // command to wake up GPS
     GPS_awake();
   }else{ // if it's set to "off", turn it to standby
-    //Serial.println(F(PMTK_STANDBY));
     GPS_standby();
   }
 }

@@ -164,7 +164,6 @@ void setup() {
   Serial.print(F("Gem Serial Number: "));
   Serial.println(SN);
 
-  //Serial.println(F("To change serial number to 'XXX', enter 'SN:XXX'"));
   Serial.println(F("To stream ascii data by Serial (no GPS), enter 'lab'"));
   Serial.println(F("To stream binary data by Serial (no GPS), enter 'bin'"));
   delay(200);
@@ -295,7 +294,6 @@ void loop() {
 
   // Turn the GPS off if needed
   if(config.gps_mode == 3){
-    //Serial.println(F(PMTK_STANDBY));
     GPS_standby();
   }
 
@@ -377,7 +375,6 @@ void loop() {
     // Turn on GPS at 1000th sample in cycle (1000 to reduce bottleneck at file beginning).
     if(config.gps_mode != 3 && (sample_count % (config.gps_cycle * 60L * 100L)) == 1000){    // config.gps_cycle is in minutes. Note that if this is 0, anything % 0 is undefined, so need to make sure it's >0
       delay(10);
-      //Serial.println(F(PMTK_AWAKE));
       GPS_awake();
       GPS_on = 1;
     }
@@ -388,7 +385,6 @@ void loop() {
     */
     if(config.gps_mode != 2 && (((long_gps_cyc != 1) && (GPS_count >= config.gps_quota)) || // normal cycles
                                 ((long_gps_cyc == 1) && (GPS_count >= LONG_GPS_CYC_LENGTH)))){ // long cycles 
-      //Serial.println(F(PMTK_STANDBY));
       GPS_standby();
       GPS_count = 0;
       pps_count = 0;
