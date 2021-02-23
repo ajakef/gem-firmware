@@ -186,8 +186,9 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
 void GPS_standby(){
   for(int i = 0; i < 2; i++){
     Serial.println(F(PMTK_STANDBY)); 
-    delay(20);
+    delay(50);
   }
+  Serial.println();
 }
 void GPS_awake(){
   for(uint8_t i = 0; i < 2; i++){
@@ -198,6 +199,7 @@ void GPS_awake(){
   delay(20);
   Serial.println(F(PMTK_SET_NMEA_UPDATE_1HZ));
   delay(20);
+  Serial.println();
 }
 
 uint16_t gem_millis(){
