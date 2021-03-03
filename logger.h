@@ -21,7 +21,7 @@ Each sample takes up 4 bytes. Normally, the FIFO only contains a few samples, bu
 fills, it triggers an overrun, and subsequent samples are lost until the FIFO has space again. So, the FIFO must be long 
 enough to make sure it doesn't fill, but short enough to fit within available SRAM. If program crashes mysteriously after
 adding new code, it could be a memory error: try decreasing FIFO_SIZE_BYTES.*/
-#define FIFO_SIZE_BYTES 300  
+#define FIFO_SIZE_BYTES 160 // 300  
 #define FIFO_DIM FIFO_SIZE_BYTES/4
 
 // Serial data rate (for communicating with GPS): use 57600
