@@ -117,13 +117,13 @@ struct Record_t {
 };
 
 // Function declarations:
-void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t *last_sample);
+void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t *last_pressure, int16_t *last_time);
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_flag, float* AVCC);
 void printRMC(RMC* G, SdFile* file, volatile float* pps_millis, uint8_t* long_gps_cyc);
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN);
 void IncrementFilename(char fname[13]);
 void logstatus(int8_t logging[2]);
-void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, int16_t* last_sample);
+void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, int16_t* last_pressure, int16_t* last_time);
 void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint16_t* GPS_count);
 void EndFile(SdFile* file);
 void EndLogging(uint16_t* maxLatency, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint32_t* sample_count);
