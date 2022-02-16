@@ -9,10 +9,12 @@ void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig 
     Serial.write((uint8_t)(p->pressure % 256)); // binary data stream
   }
   // write a data line
-  if( (abs(p->pressure - *last_pressure) <= 12) && (((p->time - *last_time - 10) % MILLIS_ROLLOVER) <= 12) ){
+  //Serial.println(p->pressure - *last_pressure);
+  //Serial.println((p->time - *last_time) % MILLIS_ROLLOVER);
+  if( (abs(p->pressure - *last_pressure) <= 12) && (((((int16_t)p->time - (int16_t)*last_time) % MILLIS_ROLLOVER)-10) <= 12) ){
     // If the pressure and time differences are close to 0 and 10, use an abbreviated line
     file->print((char)(p->time - *last_time - 10 + 109)); // 109 is 'm' on ascii table, so m is 0, a is -12, y is 12
-    file->print((char)(p->pressure - *last_pressure + 109));
+    file->println((char)(p->pressure - *last_pressure + 109));
   }else{
     // otherwise, write a long data line
     file->print(F("D"));
@@ -137,8 +139,7 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
   }
   *last_pressure = 0; // so it writes the actual value, not the diff, as the first sample in each file
   *last_time = 0; // to help ensure that a long D line gets written first instead of the abbreviated data line
-  //file->println(F("#GemCSV0.9"));
-  file->println(F("#GemCSV0.91"));
+  file->println(F("#GemCSV1.10"));
   file->println(F("#DmsSamp,ADC"));
   file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon")); // the only difference between 0.91 and 0.9 is that msPPS and msLag are now floats
   file->println(F("#M,ms,batt(V),temp(C),A2,A3,maxLag,minFree,maxUsed,maxOver,gpsFlag,freeStack1,freeStackIdle"));
