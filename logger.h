@@ -8,7 +8,7 @@
 #define FILE_LENGTH_DEFAULT 120 // minutes--must be multiple of 10 minutes
 
 // GPS_TESTING block to facilitate GPS tests (don't have to wait 15 minutes for results)
-#define GPS_TESTING 1
+#define GPS_TESTING 0
 #if GPS_TESTING
   #define GPS_QUOTA_DEFAULT 10 // number of good GPS samples that must be logged before GPS is put on standby
   #define GPS_CYC 1500 // interval in samples between GPS turning on and logging until quota is reached) 15 minutes
