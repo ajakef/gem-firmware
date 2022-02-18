@@ -198,10 +198,11 @@ uint16_t gem_millis(){
 
 // defining these two short functions with long flash strings saves flash memory
 void GPS_standby(){
-  for(int i = 0; i < 1; i++){ // don't run this more than once or it can make the GPS fail to turn off
-    Serial.println(F(PMTK_STANDBY)); 
-    delay(50);
-  }
+  // first introduced in 84d755d02074e56b55289d2d5853e71251c30bb7 (0.963), which sent standby
+  // message twice via for loop.
+  // Don't do that; the GPS doesn't turn off reliably. Just run it once for good performance.
+  Serial.println(F(PMTK_STANDBY)); 
+  delay(50);
   Serial.println();
 }
 
