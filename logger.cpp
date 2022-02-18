@@ -1,6 +1,6 @@
 #include "logger.h"
 
-void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t* last_sample){
+void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t* last_pressure, int16_t* last_time){
   // print data to the serial connection if needed
   if(config->serial_output == 1){
     Serial.println(p->pressure); // ascii data stream
@@ -9,10 +9,20 @@ void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig 
     Serial.write((uint8_t)(p->pressure % 256)); // binary data stream
   }
   // write a data line
-  file->print(F("D"));
-  file->printField(p->time % MILLIS_ROLLOVER, ',');
-  file->println(p->pressure - *last_sample);
-  *last_sample = p->pressure;
+  //Serial.println(p->pressure - *last_pressure);
+  //Serial.println((p->time - *last_time) % MILLIS_ROLLOVER);
+  if( (abs(p->pressure - *last_pressure) <= 12) && (((((int16_t)p->time - (int16_t)*last_time) % MILLIS_ROLLOVER)-10) <= 12) ){
+    // If the pressure and time differences are close to 0 and 10, use an abbreviated line
+    file->print((char)(p->time - *last_time - 10 + 109)); // 109 is 'm' on ascii table, so m is 0, a is -12, y is 12
+    file->println((char)(p->pressure - *last_pressure + 109));
+  }else{
+    // otherwise, write a long data line
+    file->print(F("D"));
+    file->printField(p->time % MILLIS_ROLLOVER, ',');
+    file->println(p->pressure - *last_pressure);
+  }
+  *last_pressure = p->pressure;
+  *last_time = p->time;
   // Test to see how long samples are waiting in the FIFO. It should normally be tens of ms. If it is much more than that, we 
   // can take it as an indicator of poor data writing performance and trigger an error. Note that this is more of a time-integrated
   // measure than just the instantaneous number of overruns.
@@ -123,13 +133,13 @@ void logstatus(int8_t logging[2]){
   }
 }
 
-void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, int16_t* last_sample){
+void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, int16_t* last_pressure, int16_t* last_time){
   if(!file->open(filename, O_WRITE | O_TRUNC | O_CREAT)) { 
     error(2); 
   }
-  *last_sample = 0; // so it writes the actual value, not the diff, as the first sample in each file
-  //file->println(F("#GemCSV0.9"));
-  file->println(F("#GemCSV0.91"));
+  *last_pressure = 0; // so it writes the actual value, not the diff, as the first sample in each file
+  *last_time = 0; // to help ensure that a long D line gets written first instead of the abbreviated data line
+  file->println(F("#GemCSV1.10"));
   file->println(F("#DmsSamp,ADC"));
   file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon")); // the only difference between 0.91 and 0.9 is that msPPS and msLag are now floats
   file->println(F("#M,ms,batt(V),temp(C),A2,A3,maxLag,minFree,maxUsed,maxOver,gpsFlag,freeStack1,freeStackIdle"));
@@ -182,14 +192,19 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
   GPS_standby();
 }
 
+uint16_t gem_millis(){
+  return round(micros()/1024.0);
+}
+
 // defining these two short functions with long flash strings saves flash memory
 void GPS_standby(){
-  for(int i = 0; i < 2; i++){
+  for(int i = 0; i < 1; i++){ // don't run this more than once or it can make the GPS fail to turn off
     Serial.println(F(PMTK_STANDBY)); 
     delay(50);
   }
   Serial.println();
 }
+
 void GPS_awake(){
   for(uint8_t i = 0; i < 2; i++){
     Serial.println(F(PMTK_AWAKE)); 
@@ -202,9 +217,6 @@ void GPS_awake(){
   Serial.println();
 }
 
-uint16_t gem_millis(){
-  return round(micros()/1024.0);
-}
 void GPS_startup(GemConfig* config){
   Serial.begin(9600);
   delay(50);

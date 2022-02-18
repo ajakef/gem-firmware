@@ -47,7 +47,8 @@ int16_t ADC_F;
 
 uint16_t tsamp[4] = {0, 0, 0, 0};
 int16_t reading;
-int16_t last_sample = 0;
+int16_t last_pressure = 0;
+int16_t last_time = 0;
 uint8_t long_gps_cyc = 1; // on startup, and then on Jan 1, Apr 1, Jul 1, and Oct 1, run long enough to download the almanac to check for leap seconds
 void(* reset) (void) = 0; // function to "reset" the microcontroller by jumping to byte 0
 ////////////////////////////////////////////////////
@@ -287,7 +288,7 @@ void loop() {
 
   // Open the first output data file
   FindFirstFile(filename, &sd, &file, &SN); // find the first filename of the form "FILEXXXX.#SN" that doesn't already exist
-  OpenNewFile(&sd, filename, &file, &config, &last_sample); // for some reason, this takes a long time (~4s), but for the first file only.
+  OpenNewFile(&sd, filename, &file, &config, &last_pressure, &last_time); // for some reason, this takes a long time (~4s), but for the first file only.
   sampling = 1; // tell the high-priority thread to start sampling the ADC
   firstfile = 1; // this is the first file since acquisition starts
   long_gps_cyc = 1; // run a long first gps cycle to check for leap seconds
@@ -356,7 +357,7 @@ void loop() {
     writeStartTime = gem_millis();// remember start time for writing this sample
     Record_t* p = fifo.waitData(TIME_IMMEDIATE);// Check for an available data record in the FIFO.
     if(!p) continue;// Continue if no available data records in the FIFO.
-    printdata(p, &file, &pps_millis, &config, &last_sample);  // Print data to file
+    printdata(p, &file, &pps_millis, &config, &last_pressure, &last_time);  // Print data to file
     fifo.signalFree(); // Signal the read thread that the record is free.
     // done writing to disk.  now, just a bunch of timekeeping stuff.
     ////////////////////////////////////////
@@ -409,7 +410,7 @@ void loop() {
     if(sample_count % (uint32_t)(FILE_LENGTH_DEFAULT * 60L * 100L) == 0 && sample_count > 0){ 
       EndFile(&file); // close the old file
       IncrementFilename(filename); // move to the next filename (e.g., FILE0001.TXT to FILE0002.TXT. Note that this does not make sure that the new file name is not already taken!)
-      OpenNewFile(&sd, filename, &file, &config, &last_sample); // open the new file
+      OpenNewFile(&sd, filename, &file, &config, &last_pressure, &last_time); // open the new file
       sample_count = 0;
       AdcError = 0; // in the next raw format, AdcError should be tracked in metadata, and maybe reset every metadata write.
       firstfile = 0; // this is no longer the first file since acquisition started
