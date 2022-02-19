@@ -153,6 +153,7 @@ void GPS_awake();
 // This approximate "millisecond" function is used for compatibility with the micros() used for the pps; they roll over at the same time.
 //#define gem_millis() round(micros()/1024.0) 
 uint16_t gem_millis(); //saves a lot of flash to implement this as a function instead of as a #define
+void file_print_lf(SdFile* file);
 
 // miscellaneous GPS checks, which may be redefined as methods of RMC class in the future
 bool checkRMC_fresh(volatile float *pps_millis);

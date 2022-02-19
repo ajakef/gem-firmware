@@ -11,15 +11,22 @@ void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig 
   // write a data line
   //Serial.println(p->pressure - *last_pressure);
   //Serial.println((p->time - *last_time) % MILLIS_ROLLOVER);
-  if( (abs(p->pressure - *last_pressure) <= 12) && (((((int16_t)p->time - (int16_t)*last_time) % MILLIS_ROLLOVER)-10) <= 12) ){
+  int16_t timediff = ((int16_t) p->time - (int16_t)*last_time) % MILLIS_ROLLOVER;
+  if( (abs(p->pressure - *last_pressure) <= 12) && (abs(timediff - 10) <= 12) ){
     // If the pressure and time differences are close to 0 and 10, use an abbreviated line
-    file->print((char)(p->time - *last_time - 10 + 109)); // 109 is 'm' on ascii table, so m is 0, a is -12, y is 12
-    file->println((char)(p->pressure - *last_pressure + 109));
+    if( timediff != 10){ // skip the time difference if it's exactly 10 (most common)
+      file->print((char)(timediff - 10 + 109)); // 109 is 'm' on ascii table, so m is 0, a is -12, y is 12
+    }
+    file->print((char)(p->pressure - *last_pressure + 109));
+    file_print_lf(file);
   }else{
     // otherwise, write a long data line
-    file->print(F("D"));
-    file->printField(p->time % MILLIS_ROLLOVER, ',');
-    file->println(p->pressure - *last_pressure);
+    file->print('D'); // no benefit to F() single characters in this case
+    if(timediff != 10){ // skip the time if the time difference is exactly 10 (most common)
+      file->printField(p->time % MILLIS_ROLLOVER, ',');
+    }
+    file->print(p->pressure - *last_pressure);
+    file_print_lf(file);
   }
   *last_pressure = p->pressure;
   *last_time = p->time;
@@ -139,17 +146,19 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
   }
   *last_pressure = 0; // so it writes the actual value, not the diff, as the first sample in each file
   *last_time = 0; // to help ensure that a long D line gets written first instead of the abbreviated data line
-  file->println(F("#GemCSV1.10"));
-  file->println(F("#DmsSamp,ADC"));
-  file->println(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon")); // the only difference between 0.91 and 0.9 is that msPPS and msLag are now floats
-  file->println(F("#M,ms,batt(V),temp(C),A2,A3,maxLag,minFree,maxUsed,maxOver,gpsFlag,freeStack1,freeStackIdle"));
+  file->print(F("#GemCSV1.10\n"));
+  file->print(F("#[msSamp]ADC #m=10,0\n"));
+  file->print(F("#[DmsSamp,]ADC\n"));
+  file->print(F("#G,msPPS,msLag,yr,mo,day,hr,min,sec,lat,lon\n")); // the only difference between 0.91 and 0.9 is that msPPS and msLag are now floats
+  file->print(F("#M,ms,batt(V),temp(C),A2,A3,maxLag,minFree,maxUsed,maxOver,gpsFlag,freeStack1,freeStackIdle\n"));
 
   file->print(F("S,"));
   file->print(EEPROM.read(0)-'0');
   file->print(EEPROM.read(1)-'0');
-  file->println(EEPROM.read(2)-'0');
+  file->print(EEPROM.read(2)-'0');
+  file_print_lf(file);
 
-  file->print(F("#Firmware"));file->println(F(FIRMWARE_VERSION));
+  file->print(F("#Firmware"));file->print(F(FIRMWARE_VERSION));file_print_lf(file);
 
   // print configuration
   file->print(F("C,"));
@@ -158,7 +167,8 @@ void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, 
   file->printField(config->gps_quota, ',');
   file->printField(config->adc_range, ',');
   file->printField(config->led_shutoff, ',');
-  file->println(config->serial_output);
+  file->print(config->serial_output);
+  file_print_lf(file);
 
 }
 
@@ -194,6 +204,10 @@ void EndLogging(uint16_t* maxWriteTime, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, 
 
 uint16_t gem_millis(){
   return round(micros()/1024.0);
+}
+
+void file_print_lf(SdFile* file){
+  file->write('\n');
 }
 
 // defining these two short functions with long flash strings saves flash memory
@@ -245,19 +259,20 @@ bool checkRMC_badtime(RMC* G) {return (G->hour > 23 || G->minute > 59 || G->seco
 
 void printRMC(RMC* G, SdFile* file, volatile float *pps_millis, uint8_t* long_gps_cyc){
   if(checkRMC_fresh(pps_millis)){
-    file->print(F("E,1,")); file->printField(gem_millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->println((uint16_t)(gem_millis()-fmod(*pps_millis, pow(2, 16))));
+    file->print(F("E,1,")); file->printField(gem_millis(), ','); file->printField(fmod(*pps_millis, pow(2, 16)), ',', 2); file->print((uint16_t)(gem_millis()-fmod(*pps_millis, pow(2, 16))));
+    file_print_lf(file);
     return; // pps_millis probably matches a different sample if this is the case
   }
   if(checkRMC_yearmissing(G) || checkRMC_yearwrong(G)){
-    file->print(F("E,2,")); file->println(G->year + 2000);
+    file->print(F("E,2,")); file->print(G->year + 2000); file_print_lf(file);
     return; // year=2000 (code 0) is a missing value
   }
   if(checkRMC_latlon(G)){
-    file->print(F("E,3,"));file->printField(G->lat, ',', 5);file->println(G->lon, 5);
+    file->print(F("E,3,"));file->printField(G->lat, ',', 5);file->print(G->lon, 5);file_print_lf(file);
     return; // lat = 0 is a missing value
   } 
   if(checkRMC_secfloat(G)){
-    file->print(F("E,4,")); file->println(G->second);
+    file->print(F("E,4,")); file->print(G->second); file_print_lf(file);
     return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
   }
   file->print("G,");
@@ -276,7 +291,7 @@ void printRMC(RMC* G, SdFile* file, volatile float *pps_millis, uint8_t* long_gp
   file->printField(G->minute, ',');
   file->printField(G->second, ',', 1); // 0 decimal points (s)
   file->printField(G->lat, ',', 5); // 5 decimal points (~1m)
-  file->println(G->lon, 5); // 5 decimal points (~1m)
+  file->print(G->lon, 5); file_print_lf(file); // 5 decimal points (~1m)
 
   if((G->day == 1) && (G->hour == 0) && // If it's the first hour of the first day of the month
         ((G->month == 1) || (G->month == 4) || (G->month == 7) || (G->month == 10)) && // on a month when leap-seconds can occur
