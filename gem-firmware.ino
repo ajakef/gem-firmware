@@ -196,7 +196,7 @@ void loop() {
   maxWriteTime = 0;
   // wait for ACQ switch to be turned on. 
   while(!logging[0]){ // wait here until switch is turned on
-    logstatus(logging);
+    logstatus(logging, &AVCC);
 
     // Meanwhile, check to see if user has supplied new serial number via Serial connection.
     if(Serial.available() > 2){
@@ -419,7 +419,7 @@ void loop() {
     }
     
     // miscellaneous stuff
-    logstatus(logging); // check to see whether the logging switch is still on
+    logstatus(logging, &AVCC); // check to see whether the logging switch is still on
     sample_count++; // increment the sample count
     if(config.led_shutoff == 0 || (firstfile == 1 && sample_count < (6000L * config.led_shutoff))){
       BlinkLED(&sample_count, &GPS_on, &GPS_count); // blink the ACQ LED

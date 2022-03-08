@@ -37,6 +37,12 @@ void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig 
     error(5); // slow SD writing
   }
 }
+
+
+float MeasureBatt(float *AVCC){
+  return ((float)analogRead(BATVOLT))/1023.0 * *AVCC * 5.54545; // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
+}
+
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_on, float* AVCC){
   uint16_t reading;
   // to reduce adc error, preliminary throwaway reading is taken before final reading for each pin. This gives the pin time to settle after being connected to ADC.
@@ -45,7 +51,7 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   file->printField((uint16_t)gem_millis() % MILLIS_ROLLOVER, ',');
   reading = analogRead(BATVOLT);
   analogRead(TEMP);
-  file->printField(((float)reading)/1023.0 * *AVCC * 5.54545, ',', 2); // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
+  file->printField(MeasureBatt(AVCC), ',', 2); // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
   reading = analogRead(TEMP);
   analogRead(2);
   file->printField(((float)reading)* *AVCC/1023.0 * 100.0 - 50.0, ',', 1); // Celsius
@@ -120,18 +126,23 @@ void IncrementFilename(char fname[13]){
   fname[6] = (i/10) % 10 + '0';
   fname[7] = i % 10 + '0';
 }
+
   
-void logstatus(int8_t logging[2]){
+void logstatus(int8_t logging[2], float *AVCC){
   // logging[0] is current status. logging[1] is number of consecutive changed readings.
   // change logging status when 10 changed readings are recorded. This is to ignore switch bouncing.
 
-  // if switchstatus is currently on, increment switch on count, and change logging status if it's >10
-  if(digitalRead(SWITCH) == 1){  // switchstatus
-    if(++logging[1] > 10){
-      logging[1] = 10;
-      logging[0] = 1;
-    }
-    // if switchstatus is off, increment switch off count and change logging status if it's <-10
+  // criteria for logging: switch on, AND (logging on and batt>stop, OR logging off and batt>go)
+  if((digitalRead(SWITCH) == 1) && (  // switchstatus
+        ((logging[0] == 1) && (analogRead(BATVOLT) > LOW_BATT_THRESHOLD_STOP)) ||
+        ((logging[0] == 0) && (analogRead(BATVOLT) > LOW_BATT_THRESHOLD_GO))
+        )){
+    
+      if(++logging[1] > 10){
+        logging[1] = 10;
+        logging[0] = 1;
+      }
+  // if switch is off or batt too low, turn logging off
   }else{
     if(--logging[1] < -10){
       logging[1] = -10;

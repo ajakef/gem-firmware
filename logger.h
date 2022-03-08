@@ -6,6 +6,8 @@
 #define DT 2500 // microseconds
 #define META_CYC 100 // interval (in samples) between metadata reports
 #define FILE_LENGTH_DEFAULT 240 // minutes--must be multiple of 10 minutes
+#define LOW_BATT_THRESHOLD_STOP 2.8
+#define LOW_BATT_THRESHOLD_GO 3.0
 
 // GPS_TESTING block to facilitate GPS tests (don't have to wait 15 minutes for results)
 #define GPS_TESTING 0
@@ -133,7 +135,7 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
 void printRMC(RMC* G, SdFile* file, volatile float* pps_millis, uint8_t* long_gps_cyc);
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN);
 void IncrementFilename(char fname[13]);
-void logstatus(int8_t logging[2]);
+void logstatus(int8_t logging[2], float *AVCC);
 void OpenNewFile(SdFat* sd, char filename[13], SdFile* file, GemConfig* config, int16_t* last_pressure, int16_t* last_time);
 void BlinkLED(uint32_t* sample_count, uint8_t* GPS_on, uint16_t* GPS_count);
 void EndFile(SdFile* file);
