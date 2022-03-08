@@ -49,9 +49,9 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   analogRead(BATVOLT); 
   file->print(F("M,"));
   file->printField((uint16_t)gem_millis() % MILLIS_ROLLOVER, ',');
-  reading = analogRead(BATVOLT);
+  reading = MeasureBatt(AVCC);
   analogRead(TEMP);
-  file->printField(MeasureBatt(AVCC), ',', 2); // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
+  file->printField(reading, ',', 2); // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
   reading = analogRead(TEMP);
   analogRead(2);
   file->printField(((float)reading)* *AVCC/1023.0 * 100.0 - 50.0, ',', 1); // Celsius
@@ -134,8 +134,8 @@ void logstatus(int8_t logging[2], float *AVCC){
 
   // criteria for logging: switch on, AND (logging on and batt>stop, OR logging off and batt>go)
   if((digitalRead(SWITCH) == 1) && (  // switchstatus
-        ((logging[0] == 1) && (analogRead(BATVOLT) > LOW_BATT_THRESHOLD_STOP)) ||
-        ((logging[0] == 0) && (analogRead(BATVOLT) > LOW_BATT_THRESHOLD_GO))
+        ((logging[0] == 1) && (MeasureBatt(AVCC) > LOW_BATT_THRESHOLD_STOP)) ||
+        ((logging[0] == 0) && (MeasureBatt(AVCC) > LOW_BATT_THRESHOLD_GO))
         )){
     
       if(++logging[1] > 10){
