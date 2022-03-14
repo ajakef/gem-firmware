@@ -342,7 +342,7 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     }
   }
   char degreebuff[10]; // can this be dropped?
-  if(strstr(nmea, "$GPRMC")) {
+  if(strstr(nmea, "RMC")) {
     G->millisParsed = gem_millis();
    // found RMC
     char *p = nmea; // p is an address that increments as we advance through nmea
