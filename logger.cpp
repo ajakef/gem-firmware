@@ -286,7 +286,7 @@ void printRMC(RMC* G, SdFile* file, volatile float *pps_millis, uint8_t* long_gp
     file->print(F("E,4,")); file->print(G->second); file_print_lf(file);
     return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
   }
-  file->print("G,");
+  file->print(F("G,"));
   file->printField(fmod(*pps_millis, MILLIS_ROLLOVER), ',');
   file->printField(G->millisParsed-fmod(*pps_millis, pow(2,16)), ',');
   if(gem_millis() % 5000 < 1000){
