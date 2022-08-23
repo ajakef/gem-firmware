@@ -27,7 +27,15 @@ Two good examples are [here](https://www.adafruit.com/product/284) (must bend th
 ## Installing the firmware to a Gem
 Align your FTDI programmer with the Gem's six-pin header just below the micro-SD card. The "GND" label on the programmer should line up with "GND" on the Gem board, and the "RST" or "DTR" label on the programmer should line up with the "RST" label on the Gem board.
 
-Select the serial port in the Tools > Port menu. The Arduino IDE can be clumsy about serial port selection, so you may have to re-do this later if an error occurs, including possibly having to unplug and plug in the connector.
+Select the serial port in the Tools > Port menu. The Arduino IDE can be clumsy about serial port selection, so you may have to re-do this later if an error occurs, including possibly having to unplug and plug in the connector. Windows users may need to install a driver (see Troubleshooting below).
 
 Click the right-arrow "Upload" button in the top left of the Arduino IDE window. Note that this compiles the code and then uploads it. It will take a minute or two to upload and verify the program. If successful, the window below the code will say ```Done Uploading.```.
+
+## Troubleshooting
+* `Error compiling`: Check that the board selected in Tools>Boards is correct.
+* Serial port is grayed out: 
+  * Windows: try installing the FTDI driver following [these directions](https://learn.sparkfun.com/tutorials/how-to-install-ftdi-drivers/all). 
+  * Try disconnecting and reconnecting the serial connector from the computer and board, and try again.
+  * Make sure that your USB cord is not a "charging only" cord, which are very common, not marked differently, and useless for communication.
+  
 
