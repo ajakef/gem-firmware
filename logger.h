@@ -6,8 +6,8 @@
 #define DT 2500 // microseconds
 #define META_CYC 100 // interval (in samples) between metadata reports
 #define FILE_LENGTH_DEFAULT 240 // minutes--must be multiple of 10 minutes
-#define LOW_BATT_THRESHOLD_STOP 2.8
-#define LOW_BATT_THRESHOLD_GO 3.0
+#define LOW_BATT_THRESHOLD_STOP_MV 2800
+#define LOW_BATT_THRESHOLD_GO_MV 3000
 
 // GPS_TESTING block to facilitate GPS tests (don't have to wait 15 minutes for results)
 #define GPS_TESTING 0

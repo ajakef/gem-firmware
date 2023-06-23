@@ -39,8 +39,9 @@ void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig 
 }
 
 
-float MeasureBatt(float *AVCC){
-  return ((float)analogRead(BATVOLT))/1023.0 * *AVCC * 5.54545; // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
+float MeasureBattMV(float *AVCC){
+  // need to return mV for compatibility with printmeta, which requires an integer output to re-use 'reading' variable (save memory)
+  return ((float)analogRead(BATVOLT))/1023.0 * *AVCC * 5.54545 * 1000; // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
 }
 
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_on, float* AVCC){
@@ -49,9 +50,9 @@ void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* m
   analogRead(BATVOLT); 
   file->print(F("M,"));
   file->printField((uint16_t)gem_millis() % MILLIS_ROLLOVER, ',');
-  reading = MeasureBatt(AVCC);
+  reading = MeasureBattMV(AVCC);
   analogRead(TEMP);
-  file->printField(reading, ',', 2); // in V; 5.54545 is the inverse of the voltage divider gain (12.2/2.2)
+  file->printField(((float)reading)/1000.0, ',', 2); 
   reading = analogRead(TEMP);
   analogRead(2);
   file->printField(((float)reading)* *AVCC/1023.0 * 100.0 - 50.0, ',', 1); // Celsius
@@ -134,8 +135,8 @@ void logstatus(int8_t logging[2], float *AVCC){
 
   // criteria for logging: switch on, AND (logging on and batt>stop, OR logging off and batt>go)
   if((digitalRead(SWITCH) == 1) && (  // switchstatus
-        ((logging[0] == 1) && (MeasureBatt(AVCC) > LOW_BATT_THRESHOLD_STOP)) ||
-        ((logging[0] == 0) && (MeasureBatt(AVCC) > LOW_BATT_THRESHOLD_GO))
+        ((logging[0] == 1) && (MeasureBattMV(AVCC) > LOW_BATT_THRESHOLD_STOP_MV)) ||
+        ((logging[0] == 0) && (MeasureBattMV(AVCC) > LOW_BATT_THRESHOLD_GO_MV))
         )){
     
       if(++logging[1] > 10){
@@ -286,7 +287,7 @@ void printRMC(RMC* G, SdFile* file, volatile float *pps_millis, uint8_t* long_gp
     file->print(F("E,4,")); file->print(G->second); file_print_lf(file);
     return; // non-integer seconds is unreliable--typically means that the time comes from RTC instead of GPS
   }
-  file->print("G,");
+  file->print(F("G,"));
   file->printField(fmod(*pps_millis, MILLIS_ROLLOVER), ',');
   file->printField(G->millisParsed-fmod(*pps_millis, pow(2,16)), ',');
   if(gem_millis() % 5000 < 1000){
@@ -342,7 +343,7 @@ uint8_t ParseRMC(char* nmea, RMC* G) {
     }
   }
   char degreebuff[10]; // can this be dropped?
-  if(strstr(nmea, "$GPRMC")) {
+  if(strstr(nmea, "RMC")) {
     G->millisParsed = gem_millis();
    // found RMC
     char *p = nmea; // p is an address that increments as we advance through nmea
