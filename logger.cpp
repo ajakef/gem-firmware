@@ -1,8 +1,12 @@
 #include "logger.h"
 
-void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t* last_pressure, int16_t* last_time){
+void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t* last_pressure, int16_t* last_time, uint16_t* sample_count_stream){
   // print data to the serial connection if needed
-  if(config->serial_output == 1){
+  if(config->serial_output == 3){
+    Serial.print((*sample_count_stream)++);
+    Serial.print(',');
+  }
+  if(config->serial_output == 1 || config->serial_output == 3){
     Serial.println(p->pressure); // ascii data stream
   }else if(config->serial_output == 2){
     Serial.write((int8_t)(p->pressure / 256)); // binary data stream
@@ -136,7 +140,8 @@ void logstatus(int8_t logging[2], float *AVCC){
   // criteria for logging: switch on, AND (logging on and batt>stop, OR logging off and batt>go)
   if((digitalRead(SWITCH) == 1) && (  // switchstatus
         ((logging[0] == 1) && (MeasureBattMV(AVCC) > LOW_BATT_THRESHOLD_STOP_MV)) ||
-        ((logging[0] == 0) && (MeasureBattMV(AVCC) > LOW_BATT_THRESHOLD_GO_MV))
+        ((logging[0] == 0) && ((MeasureBattMV(AVCC) < (LOW_BATT_THRESHOLD_GO_MV/10)) || // in this case, battery is not connected and power supplied through FTDI connector (fine)
+                                (MeasureBattMV(AVCC) > LOW_BATT_THRESHOLD_GO_MV)))
         )){
     
       if(++logging[1] > 10){
@@ -504,12 +509,13 @@ void ReadConfig(SdFile *file, char *buffer, uint8_t *buffidx, GemConfig *config)
   }
   // parse sixth line: serial_output
   x = ReadConfigLine(file, buffer, buffidx);
-  if(x == 1 || config->serial_output == 1){ // if serial_output is already set (by user on startup), it's in labtest mode. preserve this.
-    config->serial_output = 1; // send pressure data over serial connection as well as to SD. This could maybe interfere with GPS.
-  }else{
-    config->serial_output = 0; // default: do not send pressure data over serial
-  } 
-
+  if(!(config->serial_output >= 1)){ // leave config->serial_output the same if it's already set
+    if(x >= 1){ // if serial_output is already set (by user on startup), it's in labtest mode. preserve this.
+      config->serial_output = x; // send pressure data over serial connection as well as to SD. This could maybe interfere with GPS.
+    }else{
+      config->serial_output = 0; // default: do not send pressure data over serial
+    } 
+  }
 }
 
 int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
@@ -539,7 +545,9 @@ int32_t ReadConfigLine(SdFile *file, char *buffer, uint8_t *buffidx){
       if(*c == '\n') break; 
 
       // if we're here, c is neither a space, tab, CR, \n, and does not follow a comment. so, save it to buffer.
-      buffer[(*buffidx)++] = *c;
+      if((*buffidx) < (BUFFERLENGTH-2)){ // -2 is probably overcautious
+        buffer[(*buffidx)++] = *c;
+      }
     }
     if(!file->available()) break; // if we're out of characters in the file, stop trying to read it
   }

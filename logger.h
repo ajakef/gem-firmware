@@ -130,7 +130,7 @@ struct Record_t {
 };
 
 // Function declarations:
-void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t *last_pressure, int16_t *last_time);
+void printdata(Record_t* p, SdFile* file, volatile float* pps_millis, GemConfig *config, int16_t *last_pressure, int16_t *last_time, uint16_t *sample_count_stream);
 void printmeta(SdFile* file, NilStatsFIFO<Record_t, FIFO_DIM>* fifo, uint16_t* maxWriteTime, uint8_t* GPS_flag, float* AVCC);
 void printRMC(RMC* G, SdFile* file, volatile float* pps_millis, uint8_t* long_gps_cyc);
 void FindFirstFile(char fname[13], SdFat* sd, SdFile* file, int16_t* SN);

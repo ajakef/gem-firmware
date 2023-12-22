@@ -28,6 +28,7 @@ int8_t cons_overruns = 0; // count of consecutive overruns for determining an er
 uint8_t AdcError = 0;
 uint16_t maxWriteTime = 0;
 uint16_t writeStartTime;
+uint16_t sample_count_stream = 0; // just for the serial data stream; to check that samples aren't lost
 
 // These are written once per switch-on and could be stored on EEPROM if needed to save memory
 int16_t SN = 0;
@@ -197,7 +198,7 @@ void loop() {
   // wait for ACQ switch to be turned on. 
   while(!logging[0]){ // wait here until switch is turned on
     logstatus(logging, &AVCC);
-
+    
     // Meanwhile, check to see if user has supplied new serial number via Serial connection.
     if(Serial.available() > 2){
       for(int i = 0; i < 3; i++){
@@ -224,7 +225,6 @@ void loop() {
       }
     }
   }
-
   // At this point, the logging switch is set to on and we're about to start recording data. Prepare for data logging:
   digitalWrite(LED, LOW); digitalWrite(ERRORLED, LOW); // make sure LEDs are off
 
@@ -265,7 +265,7 @@ void loop() {
     config.gps_quota = GPS_QUOTA_DEFAULT; 
     config.adc_range = 0;
     config.led_shutoff = 0; // never disable LEDs
-    if(config.serial_output != 1 && config.serial_output != 2){ //if set (in startup), preserve it
+    if(config.serial_output != 1 && config.serial_output != 2 && config.serial_output != 3){ //if set (in startup), preserve it
       config.serial_output = 0; // do not send pressure data over serial
     }
   }
@@ -357,7 +357,7 @@ void loop() {
     writeStartTime = gem_millis();// remember start time for writing this sample
     Record_t* p = fifo.waitData(TIME_IMMEDIATE);// Check for an available data record in the FIFO.
     if(!p) continue;// Continue if no available data records in the FIFO.
-    printdata(p, &file, &pps_millis, &config, &last_pressure, &last_time);  // Print data to file
+    printdata(p, &file, &pps_millis, &config, &last_pressure, &last_time, &sample_count_stream);  // Print data to file
     fifo.signalFree(); // Signal the read thread that the record is free.
     // done writing to disk.  now, just a bunch of timekeeping stuff.
     ////////////////////////////////////////
