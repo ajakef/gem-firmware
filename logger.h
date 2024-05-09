@@ -22,7 +22,7 @@
   #define GPS_CYC 90000 // interval in samples between GPS turning on and logging until quota is reached) 15 minutes
   #define GPS_CYC_DEFAULT 15 // minutes, for the config
   #define GPS_RESET_THRESHOLD 20 // reset the GPS if it records 20 PPS pulses without a good NMEA string
-  #define LONG_GPS_CYC_LENGTH 900 // GPS fixes in 15 minutes. The almanac takes 12.5 minutes to load, so this should be adequate.
+  #define LONG_GPS_CYC_LENGTH 1800 // GPS fixes in 15 minutes. The almanac takes 12.5 minutes to load, so this should be adequate.
 #endif
 
 #define BUFFERLENGTH 80 // GPS buffer length (characters, bytes)
