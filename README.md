@@ -31,11 +31,21 @@ Select the serial port in the Tools > Port menu. The Arduino IDE can be clumsy a
 
 Click the right-arrow "Upload" button in the top left of the Arduino IDE window. Note that this compiles the code and then uploads it. It will take a minute or two to upload and verify the program. If successful, the window below the code will say ```Done Uploading.```.
 
+The following order of steps has been found to be most reliable for programming Gems without trouble:
+* Connect power through the Gem's barrel connector before doing anything else.
+* Wait for the red light on the GPS to start blinking on and off every second. Sometimes this takes tens of seconds.
+* With the FTDI connector already plugged into the computer by USB, connect it to the 6-pin header on the bottom board.
+* Watch the serial monitor for text. If text does not appear, try pushing the white "reset" button on the bottom of the bottom board. If text appears then, and uploading fails the first time, you may need to hold "reset" after clicking upload and timing its release just before compilation ends and upload stops.
+* Click "upload".
+
 ## Troubleshooting
 * `Error compiling`: Check that the board selected in Tools>Boards is correct.
 * Serial port is grayed out: 
   * Windows: try installing the FTDI driver following [these directions](https://learn.sparkfun.com/tutorials/how-to-install-ftdi-drivers/all). 
   * Try disconnecting and reconnecting the serial connector from the computer and board, and try again.
   * Make sure that your USB cord is not a "charging only" cord, which are very common, not marked differently, and useless for communication.
+    * Follow the exact steps in the section above "Installing the firmware to a Gem"
   
-
+* Error in upload: `programmer is not responding`, `not in sync):
+  * Follow the exact steps in the section above "Installing the firmware to a Gem"
+  * Try holding the white reset button in the corner of the bottom board and releasing right before the Arduino IDE stops compiling and starts uploading.
