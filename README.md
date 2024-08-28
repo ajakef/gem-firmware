@@ -46,6 +46,6 @@ The following order of steps has been found to be most reliable for programming 
   * Make sure that your USB cord is not a "charging only" cord, which are very common, not marked differently, and useless for communication.
     * Follow the exact steps in the section above "Installing the firmware to a Gem"
   
-* Error in upload: `programmer is not responding`, `not in sync):
+* Error in upload: `programmer is not responding`, `not in sync`):
   * Follow the exact steps in the section above "Installing the firmware to a Gem"
   * Try holding the white reset button in the corner of the bottom board and releasing right before the Arduino IDE stops compiling and starts uploading.
