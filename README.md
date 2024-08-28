@@ -44,7 +44,7 @@ The following order of steps has been found to be most reliable for programming 
   * Windows: try installing the FTDI driver following [these directions](https://learn.sparkfun.com/tutorials/how-to-install-ftdi-drivers/all). 
   * Try disconnecting and reconnecting the serial connector from the computer and board, and try again.
   * Make sure that your USB cord is not a "charging only" cord, which are very common, not marked differently, and useless for communication.
-    * Follow the exact steps in the section above "Installing the firmware to a Gem"
+  * Follow the exact steps in the section above "Installing the firmware to a Gem"
   
 * Error in upload: `programmer is not responding`, `not in sync`):
   * Follow the exact steps in the section above "Installing the firmware to a Gem"
